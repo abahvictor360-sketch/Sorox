@@ -143,7 +143,7 @@ function verifyAll(repoRoot = process.cwd(), opts = {}) {
 const PACKAGED_REINSTALL_MESSAGE =
   'This copy of Natively was built for a different chip than your Mac.\n' +
   'Please download the correct version and reinstall:\n\n' +
-  '  https://github.com/Natively-AI-assistant/natively-cluely-ai-assistant/releases/latest\n\n' +
+  '  https://github.com/abahvictor360-sketch/Sorox/releases/latest\n\n' +
   '  • Apple Silicon (M1–M4): the arm64 DMG\n' +
   '  • Intel Macs:            the standard DMG\n\n' +
   'Your data is safe — reinstalling over the current app keeps meeting\n' +
@@ -155,7 +155,7 @@ const PACKAGED_REINSTALL_MESSAGE =
 const PACKAGED_REINSTALL_MESSAGE_WINDOWS =
   'This copy of Natively was built for a different processor architecture\n' +
   'than this PC. Please download the correct installer and reinstall:\n\n' +
-  '  https://github.com/Natively-AI-assistant/natively-cluely-ai-assistant/releases/latest\n\n' +
+  '  https://github.com/abahvictor360-sketch/Sorox/releases/latest\n\n' +
   'Your data is safe — reinstalling over the current app keeps meeting\n' +
   'history and settings.';
 

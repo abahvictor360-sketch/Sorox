@@ -90,6 +90,24 @@ brew install --cask Natively-AI-assistant/tap/natively
 
 ---
 
+## Install Soro X
+
+GitHub builds the installers: open **Actions → Soro X desktop apps**, pick the latest green run, and download from *Artifacts*:
+
+- **Windows:** `soro-x-windows` → run the `-Setup-` `.exe`. It is unsigned, so Windows SmartScreen says "Windows protected your PC": click **More info → Run anyway**.
+- **Mac:** `soro-x-macos` → open the `.dmg` for your Mac (`arm64` = Apple Silicon M1/M2/M3/M4, `x64` = Intel) and drag the app to Applications. It is not notarized, so the first time: right-click the app → **Open** → **Open** (or System Settings → Privacy & Security → **Open Anyway**).
+
+## Add your API key
+
+1. Open Soro X → **Settings** (gear icon) → **AI Providers**.
+2. Under **Cloud Providers**, paste your key into one of: **Gemini**, **OpenAI**, **Claude** or **Groq**, and click **Save**. Each card has a link to the page where you create a key. One provider is enough.
+3. Optional:
+   - **Live transcription:** Settings → **Audio** → choose a speech provider and add its key (e.g. Deepgram).
+   - **Live web research** for Company Intel and job links: Profile Intelligence → **Tavily Search** → paste a Tavily key.
+   - **Free and offline:** install [Ollama](https://ollama.com), run a model, and choose it in AI Providers instead of a cloud key.
+
+Keys are stored on your computer in the system's secure storage (Keychain / Windows Credential Manager), not sent anywhere except to that provider.
+
 ## Soro X: profile engine with your own API key
 
 Soro X does not include Natively's private `premium` code or its hosted API. It ships its own profile engine in [`premium/`](premium/README.md) instead:

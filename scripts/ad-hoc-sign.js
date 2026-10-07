@@ -177,11 +177,11 @@ function enforceMainAppDisplayName(appOutDir, appName) {
 
     try {
         // CFBundleDisplayName = what Finder/Dock/Spotlight shows (BRAND). Safe to brand.
-        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Natively'" "${plistPath}"`, { stdio: 'pipe' });
+        execSync(`/usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'Soro X'" "${plistPath}"`, { stdio: 'pipe' });
         // Do NOT touch CFBundleName — it must stay the disguise alias so Electron finds
         // "<alias> Helper.app". Setting it to the brand is the "Unable to find helper app"
         // launch crash.
-        console.log('[Main Display] Main app CFBundleDisplayName set to "Natively" (CFBundleName left as the disguise alias)');
+        console.log('[Main Display] Main app CFBundleDisplayName set to "Soro X" (CFBundleName left as the disguise alias)');
     } catch (err) {
         console.warn('[Main Display] PlistBuddy warning for main app:', err.message);
     }

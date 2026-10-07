@@ -1,0 +1,109 @@
+name: Soro X desktop apps
+
+# Unsigned Soro X installers for Windows and macOS, built on GitHub's machines,
+# then launched once (no AI keys) to check the packaged app starts.
+# Download them from the run's "Artifacts" section.
+#
+# Unsigned: Windows SmartScreen and macOS Gatekeeper will warn the first time
+# you open them (see README → "Install Soro X").
+on:
+  push:
+    paths:
+      - 'electron/**'
+      - 'src/**'
+      - 'premium/**'
+      - 'native-module/**'
+      - 'assets/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/desktop-apps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies (builds native modules)
+        run: npm ci
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          npm run typecheck:electron
+          npm run build:electron
+          npm run build:native
+          node scripts/ensure-sqlite-vec.js
+      - name: Package (NSIS installer + portable)
+        shell: bash
+        run: ./node_modules/.bin/electron-builder --win --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soro-x-windows
+          path: |
+            release/*.exe
+          if-no-files-found: error
+      - name: Launch check (packaged app, no keys)
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXE=$(ls release/win-unpacked/*.exe | head -n1)
+          echo "Launching $EXE"
+          node scripts/smoke-packaged-local-fallback.mjs --app "$EXE" --no-ollama --no-keys
+
+  macos:
+    name: macOS app (Apple Silicon + Intel)
+    runs-on: macos-26
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - name: Install dependencies (builds native modules)
+        run: npm ci
+      - name: Build
+        run: |
+          set -euo pipefail
+          npm run build
+          npm run typecheck:electron
+          npm run build:electron
+          NATIVELY_BUILD_ALL_MAC_ARCHES=1 npm run build:native
+          node scripts/ensure-sharp-mac-deps.js
+          node scripts/ensure-napi-canvas-mac-deps.js
+          node scripts/ensure-sqlite-vec.js
+      - name: Package (ad-hoc signed .dmg + .zip)
+        run: ./node_modules/.bin/electron-builder --mac --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soro-x-macos
+          path: |
+            release/*.dmg
+          if-no-files-found: error
+      - name: Launch check (packaged arm64 app, no keys)
+        run: |
+          set -euo pipefail
+          APP_NAME=$(node -p "require('./scripts/disguise-name.cjs').darwin")
+          APP=$(find release -maxdepth 2 -name "${APP_NAME}.app" -path '*mac-arm64*' | head -n1)
+          echo "Launching $APP"
+          node scripts/smoke-packaged-local-fallback.mjs --app "$APP" --no-ollama --no-keys
