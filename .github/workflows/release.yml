@@ -1,0 +1,87 @@
+name: Publish Soro X release
+
+# Publishes the installers from the latest successful "Soro X desktop apps" and
+# "Soro X Tablet apps" runs on this branch as a GitHub Release, under stable
+# file names. The download page (site/) links to
+#   https://github.com/<repo>/releases/latest/download/<file>
+# so it always serves the newest release without being redeployed.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. v2.9.2-sorox.1 (defaults to v<package.json version>-sorox.<run number>)'
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BRANCH: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find the latest successful builds
+        id: runs
+        run: |
+          set -euo pipefail
+          latest() {
+            gh run list --workflow "$1" --branch "$BRANCH" --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty'
+          }
+          DESKTOP=$(latest desktop-apps.yml)
+          TABLET=$(latest tablet-apps.yml)
+          if [ -z "$DESKTOP" ]; then echo "::error::No successful 'Soro X desktop apps' run on $BRANCH yet."; exit 1; fi
+          if [ -z "$TABLET" ]; then echo "::error::No successful 'Soro X Tablet apps' run on $BRANCH yet."; exit 1; fi
+          echo "desktop=$DESKTOP" >> "$GITHUB_OUTPUT"
+          echo "tablet=$TABLET" >> "$GITHUB_OUTPUT"
+          echo "Desktop run $DESKTOP, tablet run $TABLET"
+
+      - name: Download and rename
+        run: |
+          set -euo pipefail
+          mkdir -p dl out
+          gh run download "${{ steps.runs.outputs.desktop }}" --dir dl/desktop
+          gh run download "${{ steps.runs.outputs.tablet }}" --dir dl/tablet
+          find dl -type f | sort
+          one() { # exactly one match, or fail loudly
+            local found; found=$(find dl -type f -iname "$1" | head -n1)
+            if [ -z "$found" ]; then echo "::error::No file matching $1"; exit 1; fi
+            cp "$found" "out/$2"
+          }
+          one '*Setup*.exe'          SoroX-Windows-Setup.exe
+          PORTABLE=$(find dl/desktop -type f -iname '*.exe' ! -iname '*Setup*' | head -n1)
+          [ -n "$PORTABLE" ] && cp "$PORTABLE" out/SoroX-Windows-Portable.exe || echo "::warning::No portable .exe found"
+          one '*arm64*.dmg'          SoroX-macOS-AppleSilicon.dmg
+          one '*x64*.dmg'            SoroX-macOS-Intel.dmg
+          one '*.apk'                SoroX-Tablet-Android.apk
+          one '*.ipa'                SoroX-Tablet-iPad-unsigned.ipa
+          ls -la out
+
+      - name: Publish release
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="${{ github.event.inputs.tag }}"
+          [ -n "$TAG" ] || TAG="v${VERSION}-sorox.${GITHUB_RUN_NUMBER}"
+          cat > notes.md <<EOF
+          Soro X ${VERSION} — Windows, macOS, Android tablet and iPad.
+
+          Download page and setup steps: see the repository README.
+
+          - **Windows:** \`SoroX-Windows-Setup.exe\` (or the portable \`.exe\`). Unsigned: SmartScreen → More info → Run anyway.
+          - **Mac:** \`SoroX-macOS-AppleSilicon.dmg\` (M1–M4) or \`SoroX-macOS-Intel.dmg\`. Not notarized: right-click the app → Open.
+          - **Android tablet:** \`SoroX-Tablet-Android.apk\`.
+          - **iPad:** \`SoroX-Tablet-iPad-unsigned.ipa\`, to be signed with your Apple ID (AltStore / Sideloadly) or built in Xcode.
+
+          Built from ${GITHUB_SHA} (desktop run ${{ steps.runs.outputs.desktop }}, tablet run ${{ steps.runs.outputs.tablet }}).
+
+          This project is based on Natively, originally developed by Natively AI Private Limited.
+          Natively Personal Use Source License v1.0: personal, educational, research and non-commercial use only.
+          EOF
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "Soro X ${VERSION}" --notes-file notes.md --latest
+          echo "Published $TAG"

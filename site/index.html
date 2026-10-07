@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Soro X — Download</title>
+  <meta name="description" content="Soro X: an AI meeting and interview assistant for Windows and Mac that runs on your computer with your own AI key. Tablet companion for Android and iPad." />
+  <meta name="theme-color" content="#1E1B4B" />
+  <link rel="icon" href="favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta property="og:title" content="Soro X — Download" />
+  <meta property="og:description" content="AI meeting and interview assistant for Windows and Mac, with your own AI key." />
+  <meta property="og:image" content="icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="#"><img src="icon.png" alt="" width="32" height="32" /> Soro X</a>
+    <nav>
+      <a href="#download">Download</a>
+      <a href="#setup">Set up</a>
+      <a href="#tablet">Tablet</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <img class="hero-icon" src="icon.png" alt="Soro X" width="112" height="112" />
+      <h1>Soro X</h1>
+      <p class="lead">An AI assistant for meetings and interviews that runs on your own computer, with your own AI key.</p>
+      <div class="cta">
+        <a id="primary-download" class="button primary" href="#download">Download</a>
+        <a class="button ghost" href="#download">All downloads</a>
+      </div>
+      <p id="release-info" class="muted small"></p>
+    </section>
+
+    <section class="features">
+      <div><h3>Live answers</h3><p>Transcribes the conversation and suggests what to say next, in an overlay on your screen.</p></div>
+      <div><h3>Your profile</h3><p>Upload your CV and a job description. Answers, cover letters and Role Insight use your real experience.</p></div>
+      <div><h3>Company Intel</h3><p>A research brief on the company you're meeting: culture, interviews, salary ranges and news.</p></div>
+      <div><h3>Your key, your machine</h3><p>Works with Gemini, OpenAI, Claude, Groq or a free local model via Ollama. No account needed.</p></div>
+    </section>
+
+    <section id="download" class="block">
+      <h2>Download</h2>
+      <div class="grid">
+        <article class="card" data-os="windows">
+          <h3>Windows</h3>
+          <p class="muted">Windows 10 and 11 (64-bit)</p>
+          <a class="button primary" data-asset="SoroX-Windows-Setup.exe">Installer (.exe)</a>
+          <a class="link" data-asset="SoroX-Windows-Portable.exe">Portable version, no install</a>
+        </article>
+        <article class="card" data-os="mac">
+          <h3>Mac</h3>
+          <p class="muted">macOS, Apple Silicon or Intel</p>
+          <a class="button primary" data-asset="SoroX-macOS-AppleSilicon.dmg">Apple Silicon (M1–M4)</a>
+          <a class="button" data-asset="SoroX-macOS-Intel.dmg">Intel</a>
+          <p class="hint">Not sure? Apple menu → About This Mac: "Chip: Apple M…" means Apple Silicon.</p>
+        </article>
+        <article class="card" data-os="android">
+          <h3>Android tablet</h3>
+          <p class="muted">Companion app, pairs with your computer</p>
+          <a class="button primary" data-asset="SoroX-Tablet-Android.apk">Download APK</a>
+          <p class="hint">Open the file on the tablet and allow "Install unknown apps" when asked.</p>
+        </article>
+        <article class="card" data-os="ipad">
+          <h3>iPad</h3>
+          <p class="muted">Companion app, pairs with your computer</p>
+          <a class="button" data-asset="SoroX-Tablet-iPad-unsigned.ipa">Download .ipa (unsigned)</a>
+          <p class="hint">iPadOS only installs signed apps: sign it with your Apple ID using AltStore or Sideloadly, or build it in Xcode from the <a href="https://github.com/abahvictor360-sketch/Sorox/tree/ccr-efd251da-957okn/tablet">source</a>.</p>
+        </article>
+      </div>
+      <p class="muted small">All files: <a id="releases-link" href="https://github.com/abahvictor360-sketch/Sorox/releases">GitHub releases</a>.</p>
+    </section>
+
+    <section id="setup" class="block">
+      <h2>Set up in three steps</h2>
+      <ol class="steps">
+        <li>
+          <h3>Install and open it</h3>
+          <p>The installers are not code-signed yet, so your computer warns you the first time.</p>
+          <ul>
+            <li><b>Windows:</b> "Windows protected your PC" → <b>More info</b> → <b>Run anyway</b>.</li>
+            <li><b>Mac:</b> drag Soro X to Applications, then right-click it → <b>Open</b> → <b>Open</b>. Or System Settings → Privacy &amp; Security → <b>Open Anyway</b>.</li>
+          </ul>
+        </li>
+        <li>
+          <h3>Add your AI key</h3>
+          <p><b>Settings → AI Providers → Cloud Providers</b>: paste a key into one of these and click <b>Save</b>. One is enough.</p>
+          <div class="keys">
+            <a href="https://aistudio.google.com/app/apikey" rel="noopener" target="_blank">Gemini key</a>
+            <a href="https://platform.openai.com/api-keys" rel="noopener" target="_blank">OpenAI key</a>
+            <a href="https://console.anthropic.com/settings/keys" rel="noopener" target="_blank">Claude key</a>
+            <a href="https://console.groq.com/keys" rel="noopener" target="_blank">Groq key</a>
+          </div>
+          <p class="muted small">Optional: a speech key (e.g. Deepgram) under Settings → Audio for live transcription, and a <a href="https://app.tavily.com" rel="noopener" target="_blank">Tavily</a> key under Profile Intelligence for live company research. Prefer free and offline? Install <a href="https://ollama.com" rel="noopener" target="_blank">Ollama</a> and pick its model instead.</p>
+        </li>
+        <li>
+          <h3>Add your profile</h3>
+          <p>Open <b>Profile Intelligence</b> → <b>Use Soro X profile engine</b>, upload your CV (and a job description), then in <b>Modes</b> switch to <b>Looking for work</b>.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="tablet" class="block">
+      <h2>On your tablet</h2>
+      <p>The tablet app is a companion: Soro X keeps running on your computer and the tablet shows live answers and the transcript side by side. You can ask questions, tap quick actions, capture the computer's screen or send a photo.</p>
+      <ol class="compact">
+        <li>On the computer: <b>Settings → Sync</b> → turn on <b>Enable Phone Mirror</b> and <b>Allow LAN access</b>.</li>
+        <li>Put the tablet on the same Wi-Fi and open Soro X on it.</li>
+        <li>Tap <b>Scan QR code</b> and point it at the code on your computer.</li>
+      </ol>
+      <p class="muted small">Everything stays on your local network; nothing goes through a cloud server.</p>
+    </section>
+
+    <section id="faq" class="block">
+      <h2>Questions</h2>
+      <details>
+        <summary>Can I use Soro X in the browser?</summary>
+        <p>No. It needs to hear the meeting audio, capture your screen, show an always-on-top overlay and keep your keys in the system's secure storage, which browsers do not allow. Install it on Windows or Mac; tablets connect to it.</p>
+      </details>
+      <details>
+        <summary>Where do my keys and files go?</summary>
+        <p>Keys are stored on your computer (Keychain on Mac, Credential Manager on Windows) and are only sent to the AI provider you chose. Your CV and job descriptions stay in a database on your computer.</p>
+      </details>
+      <details>
+        <summary>Does it cost anything?</summary>
+        <p>The app is free for personal, non-commercial use. You pay your AI provider for what you use, or nothing with a local Ollama model.</p>
+      </details>
+      <details>
+        <summary>Why does my computer warn me when I open it?</summary>
+        <p>The installers are not code-signed with a paid Apple or Microsoft certificate. The source and every build are public on <a href="https://github.com/abahvictor360-sketch/Sorox">GitHub</a>.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p><b>This project is based on Natively, originally developed by Natively AI Private Limited.</b></p>
+    <p>Released under the <a href="https://github.com/abahvictor360-sketch/Sorox/blob/ccr-efd251da-957okn/LICENSE">Natively Personal Use Source License v1.0</a>: personal, educational, research and non-commercial use only. Not affiliated with or endorsed by Natively AI Private Limited.</p>
+    <p class="muted small">Source: <a href="https://github.com/abahvictor360-sketch/Sorox">github.com/abahvictor360-sketch/Sorox</a></p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
