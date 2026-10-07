@@ -5,8 +5,8 @@ import {
     animationTime, cameraAt, cellTimes, churnClock, easeOut, hash, prog, smoothstep,
 } from './splashTimeline';
 
-// The Natively mark: brand/natively-mark-*.svg, the same path as NativelyLogoMark.tsx.
-const MARK_D = 'M512 106 A406 406 0 1 1 512 918 A406 406 0 1 1 512 106 Z M512 174 A338 338 0 1 0 512 850 A338 338 0 1 0 512 174 Z M288 192.77 H356 V831.23 H288 Z M668 192.77 H736 V831.23 H668 Z M271.30 207 L352.62 207 L752.70 817 L671.38 817 Z';
+// The Soro X mark: brand/sorox-mark-*.svg, the same path as NativelyLogoMark.tsx, at stroke 68.
+const MARK_D = 'M512 106 A406 406 0 1 1 512 918 A406 406 0 1 1 512 106 Z M512 174 A338 338 0 1 0 512 850 A338 338 0 1 0 512 174 Z M134.40 182.49 L182.49 134.40 L889.60 841.51 L841.51 889.60 Z M182.49 889.60 L134.40 841.51 L841.51 134.40 L889.60 182.49 Z';
 const MARK_ORIGIN = 106, MARK_BOX = 812;
 const MARK_PX = 96;
 

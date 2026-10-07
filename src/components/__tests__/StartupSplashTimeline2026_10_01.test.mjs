@@ -272,12 +272,12 @@ describe('splash wiring', () => {
   test('the splash keeps its own equal-stroke mark (every stroke 68 wide)', () => {
     const d = renderer.match(/const MARK_D = '([^']+)'/)[1];
     assert.ok(d.includes('A338 338'), 'ring: outer radius 406, inner 338');
-    assert.ok(d.includes('M288 192.77 H356') && d.includes('M668 192.77 H736'), 'uprights 68 wide');
+    assert.ok(d.includes('M134.40 182.49 L182.49 134.40') && d.includes('M182.49 889.60 L134.40 841.51'), 'diagonals 68 wide');
   });
 
-  test('NativelyLogoMark draws the white logo master (brand/natively-mark-white.svg)', () => {
+  test('NativelyLogoMark draws the white logo master (brand/sorox-mark-white.svg)', () => {
     const mark = read('../NativelyLogoMark.tsx');
-    const master = read('../../../brand/natively-mark-white.svg').match(/ d="([^"]+)"/)[1];
+    const master = read('../../../brand/sorox-mark-white.svg').match(/ d="([^"]+)"/)[1];
     assert.ok(mark.includes(`d="${master}"`), 'the app logo and its master have drifted apart');
   });
 });
