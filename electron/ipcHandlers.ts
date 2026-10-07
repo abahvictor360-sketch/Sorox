@@ -967,6 +967,16 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   };
 
+  /**
+   * Soro X: may the user use the features Soro X builds itself (its own
+   * premium/ profile engine and switching to a profile mode)? Natively's
+   * Pro / trial answer is unchanged; Soro X's own switch is the alternative,
+   * and it only counts when that engine is actually in this build.
+   */
+  const isProfileFeatureAllowed = (): boolean =>
+    isProOrTrialActive()
+    || (require('./services/soroxLocalFeatures').isSoroxLocalFeaturesEnabled() && !!appState.getKnowledgeOrchestrator());
+
   // Clears premium-only context when the pro license is lost.
   const clearActiveModeOnLicenseLoss = (): void => {
     try {
@@ -16766,10 +16776,43 @@ export function initializeIpcHandlers(appState: AppState): void {
     return key;
   };
 
+  // Soro X local-features switch (electron/services/soroxLocalFeatures.ts).
+  safeHandle('sorox:get-local-features', async () => {
+    const { isSoroxLocalFeaturesEnabled } = require('./services/soroxLocalFeatures');
+    return {
+      enabled: isSoroxLocalFeaturesEnabled(),
+      // false when premium/ is empty: the switch then unlocks nothing to use.
+      engineAvailable: !!appState.getKnowledgeOrchestrator(),
+    };
+  });
+
+  safeHandle('sorox:set-local-features', async (_, enabled: boolean) => {
+    try {
+      const { setSoroxLocalFeaturesEnabled, SOROX_LOCAL_FEATURES_CHANGED } = require('./services/soroxLocalFeatures');
+      const on = enabled === true;
+      if (!setSoroxLocalFeaturesEnabled(on)) return { success: false, error: 'settings_store_degraded' };
+      // Turning it off takes back what it gave, unless Natively Pro / a trial still grants it.
+      if (!on && !isProOrTrialActive()) {
+        try {
+          appState.getKnowledgeOrchestrator()?.setKnowledgeMode(false);
+          const { SettingsManager } = require('./services/SettingsManager');
+          SettingsManager.getInstance().set('knowledgeMode', false);
+        } catch { /* non-fatal */ }
+        clearActiveModeOnLicenseLoss();
+      }
+      BrowserWindow.getAllWindows().forEach((win) => {
+        if (!win.isDestroyed()) win.webContents.send(SOROX_LOCAL_FEATURES_CHANGED, { enabled: on });
+      });
+      return { success: true, enabled: on };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
   safeHandle('profile:upload-resume', async (_, filePath: string) => {
     try {
       // Premium gate: require active license or free trial for profile features
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -16880,7 +16923,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('profile:set-mode', async (_, enabled: boolean) => {
     try {
       // Premium gate: only allow enabling profile mode with active license or free trial
-      if (enabled && !isProOrTrialActive()) {
+      if (enabled && !isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -16997,7 +17040,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('profile:upload-jd', async (_, filePath: string) => {
     try {
       // Premium gate
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -17824,7 +17867,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('modes:create', async (_, params: { name: string; templateType: string }) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const { ModesManager } = require('./services/ModesManager');
       const mode = ModesManager.getInstance().createMode({
         name: params.name,
@@ -18102,7 +18145,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('modes:delete', async (_, id: string) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const { ModesManager } = require('./services/ModesManager');
       ModesManager.getInstance().deleteMode(id);
       return { success: true };
@@ -18120,7 +18163,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         const targetMode = ModesManager.getInstance()
           .getModes()
           .find((m: any) => m.id === id);
-        if (targetMode && targetMode.templateType !== 'general' && !isProOrTrialActive()) {
+        if (targetMode && targetMode.templateType !== 'general' && !isProfileFeatureAllowed()) {
           return { success: false, error: 'pro_required' };
         }
       }

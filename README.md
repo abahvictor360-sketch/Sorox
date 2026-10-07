@@ -90,6 +90,17 @@ brew install --cask Natively-AI-assistant/tap/natively
 
 ---
 
+## Soro X: profile engine with your own API key
+
+Soro X does not include Natively's private `premium` code or its hosted API. It ships its own profile engine in [`premium/`](premium/README.md) instead:
+
+1. Add your AI key in **Settings → AI Providers** (OpenAI, Claude, Gemini, Groq or a local Ollama).
+2. Open **Profile Intelligence** and choose **Use Soro X profile engine**.
+3. Upload your résumé and, optionally, a job description. Your own AI provider reads them.
+4. Open **Modes** and switch to **Looking for work** (or **Technical Interview**). Answers use your profile only in these modes.
+
+Company research, negotiation coaching, cover letters and Role Insight are not part of Soro X.
+
 ## The Free-for-Personal-Use, Source-Available Cluely Clone
 
 Natively started as a pixel-perfect recreation of Cluely's interface — then kept going. If you've used Cluely, you already know how to use Natively. Same overlay, same workflow, same shortcuts. Except it's free for personal, educational, research, and non-commercial use, source-available, runs locally, supports any LLM, and has never breached a single user's data.

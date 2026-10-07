@@ -51,7 +51,13 @@ test('core smoke externalizes private runtime imports only behind an explicit op
       'Auto-enabling it (e.g. on a missing premium/ submodule) turns a hard build ' +
       'failure into a silent success that ships an app with Pro features dead.'
   );
-  assert.match(buildScript, /plugins: CORE_SMOKE \? \[coreSmokePremiumExternalPlugin\] : \[\]/);
+  // Soro X: there is no private premium checkout, only the modules Soro X
+  // writes itself (premium/electron/knowledge). Outside core smoke mode the
+  // build leaves out a premium import ONLY when its file does not exist, and
+  // says so in the build log; core smoke mode still externalizes every one.
+  assert.match(buildScript, /plugins: \[CORE_SMOKE \? coreSmokePremiumExternalPlugin : missingPremiumExternalPlugin\]/);
+  assert.match(buildScript, /premiumModuleExists\(args\.resolveDir, args\.path\) \? undefined : \{ path: args\.path, external: true \}/);
+  assert.match(buildScript, /premium\/ found: premium modules it does not contain are left out/);
   assert.match(buildScript, /filter: \/\^\(\?:\\\.\\\.\\\/\)\+premium/);
 });
 

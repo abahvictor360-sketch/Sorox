@@ -1274,6 +1274,10 @@ interface ElectronAPI {
   }) => Promise<{ ok: boolean; metrics?: any; abort?: any; error?: string }>;
   modesDelete: (id: string) => Promise<{ success: boolean; error?: string }>;
   modesSetActive: (id: string | null) => Promise<{ success: boolean; error?: string }>;
+  // Soro X local-features switch (electron/services/soroxLocalFeatures.ts)
+  soroxGetLocalFeatures: () => Promise<{ enabled: boolean; engineAvailable: boolean }>;
+  soroxSetLocalFeatures: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>;
+  onSoroxLocalFeaturesChanged: (callback: (data: { enabled: boolean }) => void) => () => void;
   modesGetReferenceFiles: (
     modeId: string,
   ) => Promise<
@@ -3257,6 +3261,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }) => ipcRenderer.invoke('context-intelligence:rollout-metrics', input ?? {}),
   modesDelete: (id: string) => ipcRenderer.invoke('modes:delete', id),
   modesSetActive: (id: string | null) => ipcRenderer.invoke('modes:set-active', id),
+  // Soro X local-features switch
+  soroxGetLocalFeatures: () => ipcRenderer.invoke('sorox:get-local-features'),
+  soroxSetLocalFeatures: (enabled: boolean) => ipcRenderer.invoke('sorox:set-local-features', enabled),
+  onSoroxLocalFeaturesChanged: (callback: (data: { enabled: boolean }) => void) => {
+    const subscription = (_: any, data: { enabled: boolean }) => callback(data);
+    ipcRenderer.on('sorox-local-features-changed', subscription);
+    return () => {
+      ipcRenderer.removeListener('sorox-local-features-changed', subscription);
+    };
+  },
   modesGetReferenceFiles: (modeId: string) =>
     ipcRenderer.invoke('modes:get-reference-files', modeId),
   modesUploadReferenceFile: (modeId: string) =>

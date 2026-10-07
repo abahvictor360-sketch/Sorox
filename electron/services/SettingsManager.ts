@@ -100,6 +100,9 @@ export interface AppSettings {
     // HindsightManager.hindsightMemoryExplicitlyOff()).
     hindsightMemoryEnabledExplicit?: boolean;
     knowledgeMode?: boolean;
+    // Soro X: unlocks the user's own premium/ profile engine and mode switching
+    // (electron/services/soroxLocalFeatures.ts). Unset = off.
+    soroxLocalFeatures?: boolean;
     phoneMirrorEnabled?: boolean;
     phoneMirrorExposeOnLan?: boolean;
     // External optional provider. Default false: do not spawn Ollama unless

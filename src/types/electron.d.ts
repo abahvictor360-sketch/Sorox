@@ -479,7 +479,12 @@ export interface ElectronAPI {
   modesUpdate: (id: string, updates: { name?: string; templateType?: string; customContext?: string; sourceContract?: any }) => Promise<{ success: boolean; error?: string }>
   modesGetSourceContract: (modeId: string) => Promise<any>
   modesDelete: (id: string) => Promise<{ success: boolean; error?: string }>
+  onModesActiveCleared: (callback: () => void) => () => void
   modesSetActive: (id: string | null) => Promise<{ success: boolean; error?: string }>
+  // Soro X local-features switch
+  soroxGetLocalFeatures: () => Promise<{ enabled: boolean; engineAvailable: boolean }>
+  soroxSetLocalFeatures: (enabled: boolean) => Promise<{ success: boolean; enabled?: boolean; error?: string }>
+  onSoroxLocalFeaturesChanged: (callback: (data: { enabled: boolean }) => void) => () => void
   modesGetReferenceFiles: (modeId: string) => Promise<Array<{ id: string; modeId: string; fileName: string; content: string; createdAt: string }>>
   modesUploadReferenceFile: (modeId: string) => Promise<{ success: boolean; file?: any; cancelled?: boolean; error?: string }>
   modesDeleteReferenceFile: (id: string) => Promise<{ success: boolean; error?: string }>

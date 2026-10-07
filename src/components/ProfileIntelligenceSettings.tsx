@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { useSoroxLocalFeatures } from '../lib/useSoroxLocalFeatures';
 import {
     X, RefreshCw, Upload, Briefcase, Trash2, Check, Globe,
     Building2, Search, AlertCircle, AlertTriangle, Gift, Info, Star,
@@ -1792,9 +1793,11 @@ const PI_GATE_CSS = `
     }
 `;
 
-function ProfileIntelligenceProGate({ onOpenNativelyAPI, onClose }: {
+function ProfileIntelligenceProGate({ onOpenNativelyAPI, onClose, onUseSoroxEngine }: {
     onOpenNativelyAPI?: () => void;
     onClose?: () => void;
+    /** Soro X: present when premium/ has Soro X's own profile engine. */
+    onUseSoroxEngine?: () => void;
 }) {
     const theme = useResolvedTheme();
     // Funnel: someone without Pro opened Profile Intelligence and met this gate.
@@ -1957,6 +1960,11 @@ function ProfileIntelligenceProGate({ onOpenNativelyAPI, onClose }: {
                 flexShrink: 0, background: 'var(--pig-bg)',
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
+                    {onUseSoroxEngine && (
+                        <button className="pig-text-btn" onClick={onUseSoroxEngine} data-testid="sorox-use-profile-engine">
+                            Use Soro X profile engine <ChevronRight size={12} />
+                        </button>
+                    )}
                     {onOpenNativelyAPI && (
                         <button className="pig-text-btn" onClick={onOpenNativelyAPI}>
                             I have a license <ChevronRight size={12} />
@@ -2010,7 +2018,11 @@ export function ProfileIntelligenceSettings({
     // closes this panel), and the licence is read again on the next mount.
     const openPlans = () => onOpenNativelyAPI?.();
     const [licenseLoaded, setLicenseLoaded] = useState(false);
-    const hasProfileAccess = isPremium || isTrialActive;
+    // Soro X: its own profile engine (premium/) behind its own switch.
+    const sorox = useSoroxLocalFeatures();
+    const soroxAccess = sorox.enabled && sorox.engineAvailable;
+    const hasNativelyAccess = isPremium || isTrialActive;
+    const hasProfileAccess = isPremium || isTrialActive || soroxAccess;
     const theme = useResolvedTheme();
     /* The CTA's Liquid Glass lens. Shared with LiquidGlassButton so the rAF
        gate and the focus-clears-the-pointer rule have one implementation. */
@@ -2356,7 +2368,10 @@ export function ProfileIntelligenceSettings({
         } catch { /**/ }
     };
 
-    const visibleNav = NAV_ITEMS;
+    // Soro X's engine serves the résumé/JD upload and the extracted profile only.
+    const visibleNav = hasNativelyAccess || !soroxAccess
+        ? NAV_ITEMS
+        : NAV_ITEMS.filter(n => n.id === 'identity' || n.id === 'insights');
 
     // ── Upload helpers ────────────────────────────────────────────────────────
     const doResumeUpload = async (filePath: string) => {
@@ -3808,11 +3823,12 @@ export function ProfileIntelligenceSettings({
     // ── Non-pro users see the gate (wait for license verification) ────────────
     if (!hasProfileAccess) {
         // Busy, not empty: an empty card would read as settled to the genie.
-        if (!licenseLoaded) return <div aria-busy="true" style={{ height: '100%' }} />;
+        if (!licenseLoaded || !sorox.loaded) return <div aria-busy="true" style={{ height: '100%' }} />;
         return (
             <ProfileIntelligenceProGate
                 onOpenNativelyAPI={onOpenNativelyAPI}
                 onClose={onClose}
+                onUseSoroxEngine={sorox.engineAvailable ? () => { void sorox.setEnabled(true); } : undefined}
             />
         );
     }
@@ -3880,7 +3896,19 @@ export function ProfileIntelligenceSettings({
 
                 {/* CTA footer */}
                 <div style={{ padding: '12px', borderTop: '1px solid var(--pi-border)', flexShrink: 0 }}>
-                    {isTrialActive && !isPremium ? (
+                    {soroxAccess && !hasNativelyAccess ? (
+                        <button
+                            type="button"
+                            style={{
+                                width: '100%', padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer',
+                                fontSize: 11, color: 'var(--pi-tertiary)', fontFamily: 'inherit',
+                            }}
+                            onClick={() => { void sorox.setEnabled(false); }}
+                            data-testid="sorox-disable-profile-engine"
+                        >
+                            Soro X profile engine · Turn off
+                        </button>
+                    ) : isTrialActive && !isPremium ? (
                         /* During a free trial: the shared Liquid Glass button
                            (src/ui-components), label only. Colour and size come
                            from .pi-upgrade-lg in the style block above. */

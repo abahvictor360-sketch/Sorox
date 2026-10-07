@@ -8,6 +8,10 @@
 // The contract is: every premium handler that ingests user data must call
 // isProOrTrialActive() before doing any work, and short-circuit to the
 // "Pro license required" error message otherwise.
+//
+// Soro X: the handlers served by Soro X's own profile engine call
+// isProfileFeatureAllowed() instead, which is isProOrTrialActive() OR the Soro X
+// switch (pinned in SoroxLocalFeaturesGate.test.mjs). The rest stay Pro-only.
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = path.resolve(__dirname, '../../ipcHandlers.ts');
+
+const SOROX_OPENED = new Set(['profile:upload-resume', 'profile:set-mode', 'profile:upload-jd']);
 
 const GUARDED_HANDLERS = [
   'profile:upload-resume',
@@ -31,7 +37,8 @@ describe('Profile Intelligence IPC: Pro/trial gate', () => {
   const source = fs.readFileSync(SOURCE, 'utf8');
 
   for (const handler of GUARDED_HANDLERS) {
-    test(`handler "${handler}" calls isProOrTrialActive() before doing work`, () => {
+    const gateCall = SOROX_OPENED.has(handler) ? 'isProfileFeatureAllowed()' : 'isProOrTrialActive()';
+    test(`handler "${handler}" calls ${gateCall} before doing work`, () => {
       // Find the handler body — start at safeHandle("name", and run until the
       // matching });
       const idx = findSafeHandle(source, handler);
@@ -42,15 +49,15 @@ describe('Profile Intelligence IPC: Pro/trial gate', () => {
       // The gate call must appear before the orchestrator is invoked. We
       // assert presence; ordering is verified by a separate index check.
       assert.ok(
-        slice.includes('isProOrTrialActive()'),
-        `Handler ${handler} must invoke isProOrTrialActive() to enforce the gate`
+        slice.includes(gateCall),
+        `Handler ${handler} must invoke ${gateCall} to enforce the gate`
       );
       assert.ok(
         slice.includes('Pro license required'),
         `Handler ${handler} must return the "Pro license required" error when gated out`
       );
 
-      const gateIdx = slice.indexOf('isProOrTrialActive()');
+      const gateIdx = slice.indexOf(gateCall);
       const ingestIdx = Math.min(
         ...['ingestDocument', 'getKnowledgeOrchestrator', 'setKnowledgeMode', 'generateNegotiation', 'getCompanyResearchEngine']
           .map(s => {

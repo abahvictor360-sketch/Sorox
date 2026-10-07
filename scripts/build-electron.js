@@ -47,10 +47,23 @@ const PREMIUM_PRESENT = fs.existsSync(premiumDir) && findTs(premiumDir).length >
 if (PREMIUM_PRESENT) {
   entryPoints.push(...findTs(premiumDir).map(f => path.relative(rootDir, f)));
 }
-// Soro X: without the private premium sources (an empty or absent premium/),
-// build the core app the same way core smoke mode does. Every premium require()
-// is guarded at runtime, so those features fall back to "not available".
-const PREMIUM_EXTERNAL = CORE_SMOKE || !PREMIUM_PRESENT;
+// Soro X: premium/ holds only the modules Soro X implements itself (or nothing).
+// A premium import whose file does not exist is left external, exactly as core
+// smoke mode treats every premium import; the core app reaches those through
+// guarded require() calls, so the matching features report "not available".
+const premiumModuleExists = (resolveDir, importPath) => {
+  const base = path.resolve(resolveDir, importPath);
+  return ['', '.ts', '.tsx', '.js', '/index.ts', '/index.tsx', '/index.js']
+    .some((ext) => fs.existsSync(base + ext) && fs.statSync(base + ext).isFile());
+};
+const missingPremiumExternalPlugin = {
+  name: 'sorox-missing-premium-external',
+  setup(esbuild) {
+    esbuild.onResolve({ filter: /^(?:\.\.\/)+premium(?:\/|$)/ }, (args) => (
+      premiumModuleExists(args.resolveDir, args.path) ? undefined : { path: args.path, external: true }
+    ));
+  },
+};
 
 const start = Date.now();
 
@@ -147,7 +160,7 @@ const buildOptions = {
     '.ts': 'ts',
     '.js': 'js',
   },
-  plugins: PREMIUM_EXTERNAL ? [coreSmokePremiumExternalPlugin] : [],
+  plugins: [CORE_SMOKE ? coreSmokePremiumExternalPlugin : missingPremiumExternalPlugin],
   // EVAL-ONLY DNS fix, injected at the very top of every output bundle (runs
   // BEFORE esbuild's deferred __esm module initializers — a top-level statement
   // inside main.ts gets wrapped in a lazy init that never ran at process start).
@@ -201,6 +214,8 @@ if (WATCH) {
     console.log('[build-electron] Core smoke mode: private premium imports are external');
   } else if (!PREMIUM_PRESENT) {
     console.log('[build-electron] premium/ is empty: building the core app (premium features unavailable)');
+  } else {
+    console.log('[build-electron] premium/ found: premium modules it does not contain are left out');
   }
   build(buildOptions).then(() => {
     copyAssets();

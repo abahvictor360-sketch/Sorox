@@ -36,8 +36,8 @@ change.md
 # nativelyapi is a separate git repo — exclude from parent repo tracking
 /nativelyapi
 
-# Local premium dev copy — never commit to public repo
-/premium
+# Soro X: premium/ holds Soro X's own profile engine and is tracked (see premium/README.md).
+# Natively's ignore rule for its private premium dev copy is removed on purpose.
 
 # Generated migration patches — private, not for public repo
 *.patch
