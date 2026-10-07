@@ -968,8 +968,10 @@ export function initializeIpcHandlers(appState: AppState): void {
   };
 
   /**
-   * Soro X: may the user use the features Soro X builds itself (its own
-   * premium/ profile engine and switching to a profile mode)? Natively's
+   * Soro X: may the user use the features Soro X provides itself — its own
+   * premium/ engine (profile, company research, cover letter, negotiation
+   * script, Role Insight) and the mode features whose code is public and runs
+   * on the user's own AI key (modes, reference files, notes, mode summaries)? Natively's
    * Pro / trial answer is unchanged; Soro X's own switch is the alternative,
    * and it only counts when that engine is actually in this build.
    */
@@ -15086,7 +15088,7 @@ export function initializeIpcHandlers(appState: AppState): void {
           target = ModesManager.getInstance().getModes().find((m: { id: string }) => m.id === modeId)?.templateType ?? target;
         }
       } catch { /* resolve best-effort; an unknown mode is gated like any non-general one */ }
-      if (target !== 'general' && !isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (target !== 'general' && !isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
     }
     const ok = await mgr.regenerateMeetingSummary(id, { templateType, modeId, tone });
     return { success: ok };
@@ -17213,7 +17215,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     try {
       console.log(`[CompanyIntel-research] invoked for companyName="${companyName}" forceRefresh=${forceRefresh}`);
       // Premium gate
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -17263,7 +17265,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('profile:generate-negotiation', async (_, force: boolean = false) => {
     try {
       // Premium gate
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -17301,7 +17303,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('profile:generate-cover-letter', async (_, force: boolean = false) => {
     try {
       // Premium gate
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error:
@@ -17419,7 +17421,7 @@ export function initializeIpcHandlers(appState: AppState): void {
       // "Out of date" banner on the user. The service is single-flight and
       // attempts each source state at most once, so a failing analysis cannot
       // loop. License-gated like manual analyse — this spends tokens.
-      if (report?.outdated && isProOrTrialActive() && service.maybeAutoRefresh()) {
+      if (report?.outdated && isProfileFeatureAllowed() && service.maybeAutoRefresh()) {
         const sender = event.sender;
         const started = Date.now();
         const pump = setInterval(() => {
@@ -17460,7 +17462,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('roleInsight:analyse', async (event, options: { jobUrl?: string; skipExternalVerification?: boolean } = {}) => {
     try {
-      if (!isProOrTrialActive()) {
+      if (!isProfileFeatureAllowed()) {
         return {
           success: false,
           error: 'Pro license required. Please activate a license key to use Role Insight.',
@@ -17531,7 +17533,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('roleInsight:apply-correction', async (_, args: any) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'Pro license required.' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'Pro license required.' };
       const service = getRoleInsightService();
       if (!service) return { success: false, error: 'Role Insight is not available.' };
       if (!args?.analysisId || !args?.kind) return { success: false, error: 'Invalid correction request.' };
@@ -17555,7 +17557,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('roleInsight:answer-clarification', async (_, args: any) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'Pro license required.' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'Pro license required.' };
       const service = getRoleInsightService();
       if (!service) return { success: false, error: 'Role Insight is not available.' };
       if (!args?.analysisId || !args?.requirementId || !args?.answer) {
@@ -17580,7 +17582,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   // Intelligence evidence, so the UI can gate it behind an explicit second step.
   safeHandle('roleInsight:save-to-profile', async (_, args: any) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'Pro license required.' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'Pro license required.' };
       const service = getRoleInsightService();
       if (!service) return { success: false, error: 'Role Insight is not available.' };
       if (!args?.analysisId || !args?.requirementId || !args?.claim) {
@@ -17605,7 +17607,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('roleInsight:paste-jd', async (_, text: string) => {
     let tempPath: string | null = null;
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'Pro license required.' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'Pro license required.' };
       if (typeof text !== 'string' || text.trim().length < 200) {
         return { success: false, error: 'Paste the full job description — this looks too short to analyse.' };
       }
@@ -17651,7 +17653,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   safeHandle('roleInsight:import-jd-url', async (_, url: string) => {
     let tempPath: string | null = null;
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'Pro license required.' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'Pro license required.' };
       if (typeof url !== 'string' || !/^https?:\/\//i.test(url.trim())) {
         return { success: false, error: 'Enter a valid job posting URL starting with http:// or https://' };
       }
@@ -17899,7 +17901,7 @@ export function initializeIpcHandlers(appState: AppState): void {
       },
     ) => {
       try {
-        if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+        if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
         if (!params?.brief || typeof params.brief !== 'string' || params.brief.trim().length < 8) {
           return { success: false, error: 'brief_too_short' };
         }
@@ -17960,7 +17962,7 @@ export function initializeIpcHandlers(appState: AppState): void {
         const mgr = ModesManager.getInstance();
         // Gate: changing templateType to a non-general template requires pro.
         // Also gate if the existing mode is already non-general (editing a pro mode requires pro).
-        if (!isProOrTrialActive()) {
+        if (!isProfileFeatureAllowed()) {
           if (updates.templateType && updates.templateType !== 'general') {
             return { success: false, error: 'pro_required' };
           }
@@ -18016,7 +18018,7 @@ export function initializeIpcHandlers(appState: AppState): void {
       // but the IPC must enforce the same gate so a hand-crafted payload
       // can't bypass. Mirror modes:set-active: general modes are free, all
       // others require pro/trial.
-      if (input.templateType !== 'general' && !isProOrTrialActive()) {
+      if (input.templateType !== 'general' && !isProfileFeatureAllowed()) {
         return null;
       }
       const { ModesManager } = require('./services/ModesManager');
@@ -18327,7 +18329,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     // profile:upload-resume already uses correctly.
     let selectedPath: string | undefined;
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const result: any = await dialog.showOpenDialog({
         properties: ['openFile'],
         filters: [
@@ -18362,7 +18364,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('modes:delete-reference-file', async (_, id: string) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const { ModesManager } = require('./services/ModesManager');
       ModesManager.getInstance().deleteReferenceFile(id);
       return { success: true };
@@ -18728,7 +18730,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     'modes:add-note-section',
     async (_, modeId: string, title: string, description: string) => {
       try {
-        if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+        if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
         const { ModesManager } = require('./services/ModesManager');
         const section = ModesManager.getInstance().addNoteSection({ modeId, title, description });
         return { success: true, section };
@@ -18743,7 +18745,7 @@ export function initializeIpcHandlers(appState: AppState): void {
     'modes:update-note-section',
     async (_, id: string, updates: { title?: string; description?: string }) => {
       try {
-        if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+        if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
         const { ModesManager } = require('./services/ModesManager');
         ModesManager.getInstance().updateNoteSection(id, updates);
         return { success: true };
@@ -18756,7 +18758,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('modes:delete-note-section', async (_, id: string) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const { ModesManager } = require('./services/ModesManager');
       ModesManager.getInstance().deleteNoteSection(id);
       return { success: true };
@@ -18768,7 +18770,7 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   safeHandle('modes:remove-all-note-sections', async (_, modeId: string) => {
     try {
-      if (!isProOrTrialActive()) return { success: false, error: 'pro_required' };
+      if (!isProfileFeatureAllowed()) return { success: false, error: 'pro_required' };
       const { ModesManager } = require('./services/ModesManager');
       ModesManager.getInstance().removeAllNoteSections(modeId);
       return { success: true };

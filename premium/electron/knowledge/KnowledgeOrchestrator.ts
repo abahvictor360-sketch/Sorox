@@ -11,14 +11,19 @@
  *     the live answer when profile mode is on.
  *   - getStatus() / getProfileData(): feed the Profile Intelligence screen.
  *
- * Not implemented (the core app reports them as unavailable): company research,
- * negotiation coaching, cover letters, Role Insight.
+ *   - Company research, cover letter, negotiation script and Role Insight, all
+ *     generated with the user's own AI provider (and Tavily key, when set).
+ *
+ * Not implemented: live negotiation coaching during a call.
  */
 import { extractSafeDocumentText } from '../../../electron/services/SafeDocumentTextExtractor';
 import { isCandidateProfileQuestion } from '../../../electron/llm/manualProfileIntelligence';
 import { KnowledgeDatabaseManager } from './KnowledgeDatabaseManager';
 import { extractJob, extractResume } from './ProfileExtractor';
 import { textHasCompEvidence } from './NegotiationConversationTracker';
+import { CompanyResearchEngine } from './CompanyResearchEngine';
+import { CoverLetter, generateCoverLetter, generateNegotiationScript, NegotiationScript } from './ProfileGenerators';
+import { RoleInsightService } from './roleInsight/RoleInsightService';
 import {
     DocType,
     GenerateContentFn,
@@ -32,7 +37,6 @@ import {
 /** Cap on the résumé text added to one answer prompt (the job block is already capped by list slices). */
 const MAX_CONTEXT_CHARS = 6_000;
 
-const NOT_AVAILABLE = 'Not available in Soro X yet.';
 const UNREADABLE = 'Could not read any text from that file. If it is a scanned PDF, export it with selectable text.';
 
 export class KnowledgeOrchestrator {
@@ -41,15 +45,25 @@ export class KnowledgeOrchestrator {
     private resume: StoredDocument<ResumeFacts> | null = null;
     private jd: StoredDocument<JobFacts> | null = null;
     private readonly ingesting = new Set<DocType>();
+    private readonly research: CompanyResearchEngine;
+    private readonly roleInsight: RoleInsightService;
+    private searchProviderResolver: (() => unknown) | null = null;
 
     constructor(private readonly db: KnowledgeDatabaseManager) {
         this.refreshCache();
+        this.research = new CompanyResearchEngine(db, () => this.generateContentFn);
+        this.roleInsight = new RoleInsightService(db, () => ({ resume: this.resume, jd: this.jd }), () => this.generateContentFn);
     }
 
     // ─── Wiring called by electron/main.ts ──────────────────────────────────
 
     setGenerateContentFn(fn: GenerateContentFn): void {
         this.generateContentFn = fn;
+    }
+
+    /** Tavily (user key) → none; resolved per use so a key added mid-session counts. */
+    setSearchProviderResolver(fn: () => unknown): void {
+        this.searchProviderResolver = fn;
     }
 
     /** Embeddings are not needed: the core app indexes the raw text itself (v3ProfileSources). */
@@ -120,6 +134,8 @@ export class KnowledgeOrchestrator {
     /** Synchronous: profile:delete runs it inside a SQLite transaction. */
     deleteDocumentsByType(type: DocType): void {
         this.db.deleteByType(type);
+        // Cover letter, negotiation script and Role Insight reports are built from both documents.
+        this.db.clearDerived();
         if (type === DocType.RESUME) this.resume = null;
         if (type === DocType.JD) this.jd = null;
     }
@@ -174,7 +190,9 @@ export class KnowledgeOrchestrator {
                     min_years_experience: j.min_years_experience,
                 }
                 : null,
-            aotStatus: { companyResearch: 'unavailable' },
+            companyDossier: j?.company ? this.research.getCachedDossier(j.company) : null,
+            coverLetter: this.getCoverLetter(),
+            aotStatus: { companyResearch: 'idle' },
         };
     }
 
@@ -196,26 +214,62 @@ export class KnowledgeOrchestrator {
     feedForDepthScoring(_message: string): void { /* no-op */ }
     feedInterviewerUtterance(_text: string): void { /* no-op */ }
 
-    // ─── Features Soro X does not implement ─────────────────────────────────
+    // ─── Company research, cover letter, negotiation script, Role Insight ───
 
-    getCompanyResearchEngine() {
-        return {
-            searchProvider: null as unknown,
-            setSearchProvider(_p: unknown): void { /* no-op */ },
-            getCachedDossier(_company: string): null { return null; },
-            async researchCompany(): Promise<never> { throw new Error(NOT_AVAILABLE); },
-        };
+    getCompanyResearchEngine(): CompanyResearchEngine {
+        // profile:research-company sets the provider itself; this covers other callers.
+        if (!this.research.searchProvider && this.searchProviderResolver) {
+            try { this.research.setSearchProvider((this.searchProviderResolver() as any) ?? null); } catch { /* LLM-only */ }
+        }
+        return this.research;
     }
 
+    getRoleInsightService(): RoleInsightService {
+        return this.roleInsight;
+    }
+
+    /** Identifies the résumé + JD pair a generated document was written from. */
+    private sourceKey(): string {
+        return `${this.resume?.id ?? 0}:${this.resume?.updated_at ?? ''}|${this.jd?.id ?? 0}:${this.jd?.updated_at ?? ''}`;
+    }
+
+    private stored<T>(kind: string): T | null {
+        const row = this.db.getGenerated(kind);
+        return row && row.source_key === this.sourceKey() ? (row.content as T) : null;
+    }
+
+    private async writeDocument<T>(kind: string, write: (g: GenerateContentFn, r: ResumeFacts, j: JobFacts, dossier: any) => Promise<T | null>): Promise<T | null> {
+        if (!this.resume || !this.jd) return null;
+        const generate = this.generateContentFn;
+        if (!generate) throw new Error('No AI provider is configured. Add a key in Settings → AI Providers.');
+        const dossier = this.jd.structured_data.company ? this.research.getCachedDossier(this.jd.structured_data.company) : null;
+        const doc = await write(generate, this.resume.structured_data, this.jd.structured_data, dossier);
+        if (doc) this.db.saveGenerated(kind, this.sourceKey(), doc);
+        return doc;
+    }
+
+    getCoverLetter(): CoverLetter | null {
+        return this.stored<CoverLetter>('cover_letter');
+    }
+
+    generateCoverLetterOnDemand(): Promise<CoverLetter | null> {
+        return this.writeDocument('cover_letter', generateCoverLetter);
+    }
+
+    getNegotiationScript(): NegotiationScript | null {
+        return this.stored<NegotiationScript>('negotiation_script');
+    }
+
+    generateNegotiationScriptOnDemand(): Promise<NegotiationScript | null> {
+        return this.writeDocument('negotiation_script', generateNegotiationScript);
+    }
+
+    // Live negotiation coaching during a call is not part of Soro X.
     getNegotiationTracker() {
         return { getState: (): null => null, isActive: (): boolean => false };
     }
 
     resetNegotiationSession(): void { /* no-op */ }
-    getNegotiationScript(): null { return null; }
-    async generateNegotiationScriptOnDemand(): Promise<null> { return null; }
-    getCoverLetter(): null { return null; }
-    async generateCoverLetterOnDemand(): Promise<null> { return null; }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

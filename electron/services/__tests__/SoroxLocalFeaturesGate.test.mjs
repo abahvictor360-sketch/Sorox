@@ -23,19 +23,47 @@ function handler(channel) {
 }
 
 const OPENED = [
+    // Soro X's own premium/ engine
     'profile:upload-resume',
     'profile:upload-jd',
     'profile:set-mode',
-    'modes:create',
-    'modes:delete',
-    'modes:set-active',
-];
-
-const STILL_NATIVELY_ONLY = [
     'profile:research-company',
     'profile:generate-negotiation',
     'profile:generate-cover-letter',
+    'roleInsight:get-report',
+    'roleInsight:analyse',
+    'roleInsight:apply-correction',
+    'roleInsight:answer-clarification',
+    'roleInsight:save-to-profile',
+    'roleInsight:paste-jd',
+    'roleInsight:import-jd-url',
+    // Public mode code that runs on the user's own AI key
+    'modes:create',
+    'modes:delete',
+    'modes:set-active',
+    'modes:generate-from-brief',
+    'modes:update',
+    'modes:build-user-source-contract',
     'modes:upload-reference-file',
+    'modes:delete-reference-file',
+    'modes:add-note-section',
+    'modes:update-note-section',
+    'modes:delete-note-section',
+    'modes:remove-all-note-sections',
+    'regenerate-meeting-summary',
+];
+
+// Natively's experimental knowledge packs stay behind Natively Pro / trial.
+const STILL_NATIVELY_ONLY = [
+    'knowledge:export-profile-pack',
+    'knowledge:list-profile-packs',
+    'knowledge:get-profile-pack',
+    'knowledge:regenerate-pack',
+    'knowledge:export-pack',
+    'knowledge:edit-card',
+    'knowledge:approve-card',
+    'knowledge:reject-card',
+    'knowledge:restore-card-version',
 ];
 
 test('the switch opens exactly the Soro X profile + mode handlers', () => {
@@ -50,6 +78,7 @@ test('features Soro X does not build stay behind Natively Pro / trial', () => {
     for (const ch of STILL_NATIVELY_ONLY) {
         const body = handler(ch);
         assert.ok(!body.includes('isProfileFeatureAllowed()'), `${ch} must not be opened by the Soro X switch`);
+        assert.ok(body.includes('isProOrTrialActive()'), `${ch} keeps its Pro / trial check`);
     }
     assert.equal((src.match(/isProfileFeatureAllowed\(\)/g) || []).length, OPENED.length,
         'isProfileFeatureAllowed() is used only by the opened handlers');

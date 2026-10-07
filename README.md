@@ -99,7 +99,7 @@ Soro X does not include Natively's private `premium` code or its hosted API. It 
 3. Upload your résumé and, optionally, a job description. Your own AI provider reads them.
 4. Open **Modes** and switch to **Looking for work** (or **Technical Interview**). Answers use your profile only in these modes.
 
-Company research, negotiation coaching, cover letters and Role Insight are not part of Soro X.
+Also on your own key: **Company Intel** (add a Tavily key for live web research), **Cover Letter**, **Role Insight** (how your résumé fits the job, likely questions, a salary negotiation script), and in **Modes**: describe-a-mode generation, per-mode instructions and reference files. Live negotiation coaching during a call is not part of Soro X.
 
 ## The Free-for-Personal-Use, Source-Available Cluely Clone
 

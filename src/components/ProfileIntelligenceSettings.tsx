@@ -2368,10 +2368,8 @@ export function ProfileIntelligenceSettings({
         } catch { /**/ }
     };
 
-    // Soro X's engine serves the résumé/JD upload and the extracted profile only.
-    const visibleNav = hasNativelyAccess || !soroxAccess
-        ? NAV_ITEMS
-        : NAV_ITEMS.filter(n => n.id === 'identity' || n.id === 'insights');
+    // Every section has a backend under Soro X's engine (premium/) as well.
+    const visibleNav = NAV_ITEMS;
 
     // ── Upload helpers ────────────────────────────────────────────────────────
     const doResumeUpload = async (filePath: string) => {

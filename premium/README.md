@@ -18,13 +18,24 @@ the repository (see `../LICENSE`).
 | `electron/knowledge/ProfileExtractor.ts` | the orchestrator | Turns document text into structured facts with your own AI provider; falls back to a plain-text heuristic |
 | `electron/knowledge/NegotiationConversationTracker.ts` | `electron/main.ts` | `textHasCompEvidence()`: spots salary talk so it is not treated as résumé recall |
 | `electron/knowledge/types.ts` | `electron/ipcHandlers.ts` | `DocType` |
-| `src/ModesSettings.tsx` | `src/premium/index.tsx` | Modes screen: switch modes, add/remove modes, and the Soro X switch |
+| `electron/knowledge/CompanyResearchEngine.ts` | the orchestrator | Company Intel dossier: your Tavily key's web search (optional) summarised by your AI provider; LLM-only and marked as such without a key |
+| `electron/knowledge/TavilySearchProvider.ts` | `electron/services/resolveCompanySearchProvider.ts` | Tavily search + page extract with your own key |
+| `electron/knowledge/ProfileGenerators.ts` | the orchestrator | Cover letter and salary negotiation script |
+| `electron/knowledge/roleInsight/RoleInsightService.ts` | the orchestrator | Role Insight: requirement-by-requirement fit, talking points, likely questions, "I have this" corrections |
+| `electron/knowledge/roleInsight/JdSourceResolver.ts` | `roleInsight:import-jd-url` | Import a job description from its URL (Tavily) |
+| `src/ModesSettings.tsx` | `src/premium/index.tsx` | Modes screen: switch/add/remove modes, describe-a-mode generation, per-mode instructions and reference files, and the Soro X switch |
+| `src/RoleInsightPanel.tsx` | `src/premium/index.tsx` | Role Insight screen and the negotiation script |
+
+The switch also opens mode features whose code was already public and runs on
+your own AI key: mode instructions, reference files, note sections, "describe a
+mode" generation and re-summarising a meeting in a different mode.
 
 ## What is not implemented
 
-Company research, Tavily search, negotiation coaching, cover letters, Role
-Insight, licensing and the promo pop-ups. These stay behind Natively's own
-Pro / trial check, so they show "Pro license required" or "not available".
+Live negotiation coaching during a call, automatic company research on job
+upload (it spends your credits; Soro X researches when you ask), Natively's
+experimental knowledge packs, licensing, Natively's hosted API and the promo
+pop-ups. These stay behind Natively's own Pro / trial check or are absent.
 
 ## Turning it on
 

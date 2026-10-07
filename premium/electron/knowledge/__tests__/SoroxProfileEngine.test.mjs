@@ -200,13 +200,15 @@ test('a new upload replaces the previous document of that type', async () => {
     assert.equal(rows.n, 1);
 });
 
-test('features Soro X does not build fail softly', async () => {
+test('live negotiation coaching is not part of Soro X and stays inert', async () => {
     const { o } = engine();
-    const research = o.getCompanyResearchEngine();
-    assert.equal(research.getCachedDossier('Acme'), null);
-    await assert.rejects(() => research.researchCompany('Acme', {}, false), /Not available in Soro X/);
     assert.equal(o.getNegotiationTracker().isActive(), false);
-    assert.equal(await o.generateCoverLetterOnDemand(), null);
+    assert.equal(o.getNegotiationTracker().getState(), null);
+    o.resetNegotiationSession();
+    o.setKnowledgeMode(true);
+    await o.ingestDocument(tmpFile('cv.txt', RESUME_TEXT), 'resume');
+    const r = await o.processQuestion('What salary are you expecting?');
+    assert.equal(r.liveNegotiationResponse, undefined);
 });
 
 test('compensation detector', () => {

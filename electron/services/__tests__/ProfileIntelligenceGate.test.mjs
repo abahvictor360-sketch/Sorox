@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SOURCE = path.resolve(__dirname, '../../ipcHandlers.ts');
 
-const SOROX_OPENED = new Set(['profile:upload-resume', 'profile:set-mode', 'profile:upload-jd']);
+const SOROX_OPENED = new Set(['profile:upload-resume', 'profile:set-mode', 'profile:upload-jd', 'profile:research-company', 'profile:generate-negotiation']);
 
 const GUARDED_HANDLERS = [
   'profile:upload-resume',

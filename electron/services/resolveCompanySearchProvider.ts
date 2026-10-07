@@ -23,9 +23,14 @@ export function resolveCompanySearchProvider(): SearchProvider | null {
 
   const nativelyKey = cm.getNativelyApiKey();
   if (nativelyKey) {
-    const {
-      NativelySearchProvider,
-    } = require('../../premium/electron/knowledge/NativelySearchProvider');
+    // Soro X: premium/ has no Natively search module; without it there is no
+    // Natively-backed search, so research runs LLM-only instead of throwing.
+    let NativelySearchProvider: any;
+    try {
+      ({ NativelySearchProvider } = require('../../premium/electron/knowledge/NativelySearchProvider'));
+    } catch {
+      return null;
+    }
     // Pass the real trial token when the key is the __trial__ sentinel so the
     // server can authenticate via x-trial-token instead of the invalid key.
     const trialToken = nativelyKey === TRIAL_SENTINEL_KEY ? cm.getTrialToken() : undefined;
