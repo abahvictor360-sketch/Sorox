@@ -30,13 +30,34 @@
   const mine = isWindows ? 'windows' : isAndroid ? 'android' : isIPad ? 'ipad' : isMac ? 'mac' : null;
   if (mine) document.querySelector(`.card[data-os="${mine}"]`)?.classList.add('yours');
 
-  // ── Version line (best effort; the links above work without it) ───────
+  // ── Release check: version line, and no links to files that do not exist yet ──
+  const markMissing = (available) => {
+    const anchors = [...document.querySelectorAll('[data-asset]'), primary];
+    for (const a of anchors) {
+      const name = a === primary ? (a.href.split('/download/')[1] || '') : a.dataset.asset;
+      if (!name || available.has(name)) continue;
+      a.removeAttribute('href');
+      a.classList.add('pending');
+      a.setAttribute('aria-disabled', 'true');
+      a.dataset.label = a.textContent;
+      a.textContent = `${a.textContent} — coming soon`;
+    }
+  };
   fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } })
-    .then((r) => (r.ok ? r.json() : null))
+    .then((r) => {
+      if (r.status === 404) return { none: true }; // nothing published yet
+      return r.ok ? r.json() : null;               // rate limit / outage: leave the links alone
+    })
     .then((rel) => {
-      if (!rel || !rel.tag_name) return;
-      const when = rel.published_at ? new Date(rel.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
       const info = document.getElementById('release-info');
+      if (!rel) return;
+      if (rel.none) {
+        markMissing(new Set());
+        info.textContent = 'The first release is being built. Check back soon.';
+        return;
+      }
+      markMissing(new Set((rel.assets || []).map((x) => x.name)));
+      const when = rel.published_at ? new Date(rel.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
       info.textContent = `Latest: ${rel.name || rel.tag_name}${when ? ` · ${when}` : ''}`;
       document.getElementById('releases-link').href = rel.html_url;
     })

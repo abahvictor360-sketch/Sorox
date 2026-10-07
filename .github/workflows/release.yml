@@ -34,8 +34,10 @@ jobs:
           }
           DESKTOP=$(latest desktop-apps.yml)
           TABLET=$(latest tablet-apps.yml)
-          if [ -z "$DESKTOP" ]; then echo "::error::No successful 'Soro X desktop apps' run on $BRANCH yet."; exit 1; fi
-          if [ -z "$TABLET" ]; then echo "::error::No successful 'Soro X Tablet apps' run on $BRANCH yet."; exit 1; fi
+          # Publish what is ready; a later run adds the rest.
+          [ -n "$DESKTOP" ] || echo "::warning::No successful 'Soro X desktop apps' run on $BRANCH yet: no Windows/Mac files in this release."
+          [ -n "$TABLET" ] || echo "::warning::No successful 'Soro X Tablet apps' run on $BRANCH yet: no tablet files in this release."
+          if [ -z "$DESKTOP$TABLET" ]; then echo "::error::Nothing to publish yet."; exit 1; fi
           echo "desktop=$DESKTOP" >> "$GITHUB_OUTPUT"
           echo "tablet=$TABLET" >> "$GITHUB_OUTPUT"
           echo "Desktop run $DESKTOP, tablet run $TABLET"
@@ -44,22 +46,23 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dl out
-          gh run download "${{ steps.runs.outputs.desktop }}" --dir dl/desktop
-          gh run download "${{ steps.runs.outputs.tablet }}" --dir dl/tablet
+          [ -z "${{ steps.runs.outputs.desktop }}" ] || gh run download "${{ steps.runs.outputs.desktop }}" --dir dl/desktop
+          [ -z "${{ steps.runs.outputs.tablet }}" ] || gh run download "${{ steps.runs.outputs.tablet }}" --dir dl/tablet
           find dl -type f | sort
-          one() { # exactly one match, or fail loudly
+          one() { # copy the first match under its stable name; warn when missing
             local found; found=$(find dl -type f -iname "$1" | head -n1)
-            if [ -z "$found" ]; then echo "::error::No file matching $1"; exit 1; fi
+            if [ -z "$found" ]; then echo "::warning::No file matching $1"; return 0; fi
             cp "$found" "out/$2"
           }
           one '*Setup*.exe'          SoroX-Windows-Setup.exe
-          PORTABLE=$(find dl/desktop -type f -iname '*.exe' ! -iname '*Setup*' | head -n1)
+          PORTABLE=$(find dl -path '*desktop*' -type f -iname '*.exe' ! -iname '*Setup*' | head -n1)
           [ -n "$PORTABLE" ] && cp "$PORTABLE" out/SoroX-Windows-Portable.exe || echo "::warning::No portable .exe found"
           one '*arm64*.dmg'          SoroX-macOS-AppleSilicon.dmg
           one '*x64*.dmg'            SoroX-macOS-Intel.dmg
           one '*.apk'                SoroX-Tablet-Android.apk
           one '*.ipa'                SoroX-Tablet-iPad-unsigned.ipa
           ls -la out
+          [ -n "$(ls -A out)" ] || { echo "::error::No files to publish."; exit 1; }
 
       - name: Publish release
         run: |
