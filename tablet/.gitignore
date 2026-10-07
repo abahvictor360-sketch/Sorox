@@ -19,3 +19,7 @@ ios/App/build/
 ios/App/Payload/
 *.ipa
 *.apk
+
+# The root .gitignore ignores *.xcodeproj (Natively had none to track); the
+# iPad app needs its project file.
+!ios/App/App.xcodeproj
