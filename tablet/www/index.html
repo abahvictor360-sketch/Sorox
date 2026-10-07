@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#1E1B4B" />
+  <title>Soro X</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <img src="icon.png" alt="" width="56" height="56" />
+      <div>
+        <h1>Soro X</h1>
+        <p class="sub">Tablet companion for Soro X on your computer</p>
+      </div>
+    </header>
+
+    <section id="saved" class="card" hidden>
+      <h2>Your computer</h2>
+      <ul id="saved-list" class="saved"></ul>
+      <p class="hint">Restarted Soro X on your computer? Its pairing code changes: scan the new one below.</p>
+    </section>
+
+    <section class="card">
+      <h2>Pair with your computer</h2>
+      <ol class="steps">
+        <li>On your computer, open <b>Soro X → Settings → Sync</b>.</li>
+        <li>Turn on <b>Enable Phone Mirror</b> and <b>Allow LAN access</b>.</li>
+        <li>Make sure this tablet is on the <b>same Wi-Fi</b>, then scan the QR code.</li>
+      </ol>
+
+      <div class="actions">
+        <button id="scan" class="primary" type="button">Scan QR code</button>
+        <label class="secondary" for="photo">Photo of QR code</label>
+        <input id="photo" type="file" accept="image/*" capture="environment" hidden />
+      </div>
+
+      <div id="camera" class="camera" hidden>
+        <video id="video" playsinline muted></video>
+        <div class="frame" aria-hidden="true"></div>
+        <button id="stop" class="secondary" type="button">Cancel</button>
+      </div>
+
+      <form id="manual" class="manual">
+        <label for="link">Or paste the link</label>
+        <div class="row">
+          <input id="link" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="http://192.168.1.20:4123/?t=…" />
+          <button class="primary" type="submit">Connect</button>
+        </div>
+      </form>
+
+      <p id="message" class="message" role="status" aria-live="polite"></p>
+    </section>
+
+    <footer class="legal">
+      This project is based on Natively, originally developed by Natively AI Private Limited.
+      Personal, non-commercial use only.
+    </footer>
+  </main>
+
+  <script src="vendor/jsQR.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

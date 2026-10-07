@@ -113,62 +113,67 @@ def save(img, *rel, **kw):
     print("wrote", rel[-1] if len(rel) == 1 else os.path.join(*rel))
 
 
-# ---------- SVG masters ----------
-D75 = mark_d()
-D80 = mark_d(w=80)
-svg_mark = lambda fill: f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="106 106 812 812" width="812" height="812" role="img" aria-label="Soro X mark"><path fill="{fill}" d="{D75}"/></svg>\n'
-for name, fill in (("white", "#FFFFFF"), ("black", "#000000"), ("violet", "#1E1B4B")):
-    open(p("brand", f"sorox-mark-{name}.svg"), "w").write(svg_mark(fill))
-open(p("brand", "sorox-mark-liquid-glass-layer.svg"), "w").write(
-    f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Soro X mark (Liquid Glass layer, weight 80)"><path fill="#FFFFFF" d="{D80}"/></svg>\n')
-sq = " L".join(f"{x:.2f} {y:.2f}" for x, y in squircle_pts(512, 512, 500, steps=360))
-mr = 0.72 * 1000 / 812
-open(p("brand", "sorox-app-icon.svg"), "w").write(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Soro X">\n'
-    '<defs><linearGradient id="bg" x1="512" y1="12" x2="512" y2="1012" gradientUnits="userSpaceOnUse">'
-    f'<stop offset="0" stop-color="#{TOP[0]:02X}{TOP[1]:02X}{TOP[2]:02X}"/><stop offset="1" stop-color="#{BOTTOM[0]:02X}{BOTTOM[1]:02X}{BOTTOM[2]:02X}"/></linearGradient></defs>\n'
-    f'<path fill="url(#bg)" d="M{sq} Z"/>\n'
-    f'<g transform="translate(512 512) scale({mr:.6f}) translate(-512 -512)"><path fill="#FFFFFF" d="{D75}"/></g></svg>\n')
-print("wrote brand SVGs")
-# The splash animation keeps its own stroke-68 copy: mark_d(w=68).
+def main():
+    # ---------- SVG masters ----------
+    D75 = mark_d()
+    D80 = mark_d(w=80)
+    svg_mark = lambda fill: f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="106 106 812 812" width="812" height="812" role="img" aria-label="Soro X mark"><path fill="{fill}" d="{D75}"/></svg>\n'
+    for name, fill in (("white", "#FFFFFF"), ("black", "#000000"), ("violet", "#1E1B4B")):
+        open(p("brand", f"sorox-mark-{name}.svg"), "w").write(svg_mark(fill))
+    open(p("brand", "sorox-mark-liquid-glass-layer.svg"), "w").write(
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Soro X mark (Liquid Glass layer, weight 80)"><path fill="#FFFFFF" d="{D80}"/></svg>\n')
+    sq = " L".join(f"{x:.2f} {y:.2f}" for x, y in squircle_pts(512, 512, 500, steps=360))
+    mr = 0.72 * 1000 / 812
+    open(p("brand", "sorox-app-icon.svg"), "w").write(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Soro X">\n'
+        '<defs><linearGradient id="bg" x1="512" y1="12" x2="512" y2="1012" gradientUnits="userSpaceOnUse">'
+        f'<stop offset="0" stop-color="#{TOP[0]:02X}{TOP[1]:02X}{TOP[2]:02X}"/><stop offset="1" stop-color="#{BOTTOM[0]:02X}{BOTTOM[1]:02X}{BOTTOM[2]:02X}"/></linearGradient></defs>\n'
+        f'<path fill="url(#bg)" d="M{sq} Z"/>\n'
+        f'<g transform="translate(512 512) scale({mr:.6f}) translate(-512 -512)"><path fill="#FFFFFF" d="{D75}"/></g></svg>\n')
+    print("wrote brand SVGs")
+    # The splash animation keeps its own stroke-68 copy: mark_d(w=68).
 
-# ---------- rasters ----------
-# white mark, full-bleed, transparent
-for rel, s in ((("assets", "icon-512.png"), 512), (("src", "components", "icon.png"), 644), (("src", "assets", "logo.png"), 644)):
-    save(draw_mark(s), *rel)
-save(draw_mark(644), "src", "assets", "logo.webp", lossless=True)
-for base in (("assets",), ("src", "components")):
-    save(draw_mark(16), *base, "iconTemplate.png")
-    save(draw_mark(32), *base, "iconTemplate@2x.png")
-# mark layer for the macOS 26 .icon bundle (ring at 106..918 of 1024)
-save(draw_mark(1024, crop=False), "assets", "Natively.icon", "Assets", "mark.png")
-# website logo: soft violet mark on white
-web = Image.new("RGBA", (1024, 1024), (255, 255, 255, 255))
-wm = draw_mark(620, color=(0xDD, 0xD6, 0xFE)); web.alpha_composite(wm, (202, 202)); save(web, "src", "assets", "logowebsite.png")
+    # ---------- rasters ----------
+    # white mark, full-bleed, transparent
+    for rel, s in ((("assets", "icon-512.png"), 512), (("src", "components", "icon.png"), 644), (("src", "assets", "logo.png"), 644)):
+        save(draw_mark(s), *rel)
+    save(draw_mark(644), "src", "assets", "logo.webp", lossless=True)
+    for base in (("assets",), ("src", "components")):
+        save(draw_mark(16), *base, "iconTemplate.png")
+        save(draw_mark(32), *base, "iconTemplate@2x.png")
+    # mark layer for the macOS 26 .icon bundle (ring at 106..918 of 1024)
+    save(draw_mark(1024, crop=False), "assets", "Natively.icon", "Assets", "mark.png")
+    # website logo: soft violet mark on white
+    web = Image.new("RGBA", (1024, 1024), (255, 255, 255, 255))
+    wm = draw_mark(620, color=(0xDD, 0xD6, 0xFE)); web.alpha_composite(wm, (202, 202)); save(web, "src", "assets", "logowebsite.png")
 
-# full app icons
-for s in (16, 32, 64, 128, 256, 512, 1024):
-    inset = 0 if s <= 64 else 12 / 1024
-    save(app_icon(s, inset=inset), "assets", "icons", "png", f"icon_{s}x{s}.png")
-save(app_icon(512, inset=6 / 512), "assets", "icon.png")
-save(app_icon(512, inset=0.0935, shadow=True), "assets", "icons", "mac", "dock-icon.png")
-save(app_icon(192, inset=0.0935, shadow=True), "src", "assets", "about", "app-icon-mac.webp", lossless=True)
-save(app_icon(192, inset=2 / 192), "src", "assets", "about", "app-icon-win.webp", lossless=True)
+    # full app icons
+    for s in (16, 32, 64, 128, 256, 512, 1024):
+        inset = 0 if s <= 64 else 12 / 1024
+        save(app_icon(s, inset=inset), "assets", "icons", "png", f"icon_{s}x{s}.png")
+    save(app_icon(512, inset=6 / 512), "assets", "icon.png")
+    save(app_icon(512, inset=0.0935, shadow=True), "assets", "icons", "mac", "dock-icon.png")
+    save(app_icon(192, inset=0.0935, shadow=True), "src", "assets", "about", "app-icon-mac.webp", lossless=True)
+    save(app_icon(192, inset=2 / 192), "src", "assets", "about", "app-icon-win.webp", lossless=True)
 
-# Windows .ico and macOS .icns
-big = app_icon(1024, inset=0)
-save(big, "assets", "icons", "win", "icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-mac = app_icon(1024, inset=0.0975, shadow=True)
-for rel in (("assets", "icon.icns"), ("assets", "natively.icns"), ("assets", "icons", "mac", "icon.icns")):
-    save(mac, *rel)
+    # Windows .ico and macOS .icns
+    big = app_icon(1024, inset=0)
+    save(big, "assets", "icons", "win", "icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    mac = app_icon(1024, inset=0.0975, shadow=True)
+    for rel in (("assets", "icon.icns"), ("assets", "natively.icns"), ("assets", "icons", "mac", "icon.icns")):
+        save(mac, *rel)
 
-# liquid-glass reference renders
-for ver in ("macos26", "macos27"):
-    for v in ("Default", "Dark", "ClearDark", "ClearLight", "TintedDark", "TintedLight"):
-        if v == "Default":
-            im = app_icon(1024, inset=0.0975)
-        elif v.endswith("Dark"):
-            im = app_icon(1024, inset=0.0975, bg=(0x1C, 0x1C, 0x1E) if v != "TintedDark" else (0x2E, 0x10, 0x65))
-        else:
-            im = app_icon(1024, inset=0.0975, bg=(0xF8, 0xF5, 0xFF), mark_color=(0x5B, 0x21, 0xB6))
-        save(im, "brand", "liquid-glass", f"sorox-{ver}-{v}.png")
+    # liquid-glass reference renders
+    for ver in ("macos26", "macos27"):
+        for v in ("Default", "Dark", "ClearDark", "ClearLight", "TintedDark", "TintedLight"):
+            if v == "Default":
+                im = app_icon(1024, inset=0.0975)
+            elif v.endswith("Dark"):
+                im = app_icon(1024, inset=0.0975, bg=(0x1C, 0x1C, 0x1E) if v != "TintedDark" else (0x2E, 0x10, 0x65))
+            else:
+                im = app_icon(1024, inset=0.0975, bg=(0xF8, 0xF5, 0xFF), mark_color=(0x5B, 0x21, 0xB6))
+            save(im, "brand", "liquid-glass", f"sorox-{ver}-{v}.png")
+
+
+if __name__ == '__main__':
+    main()

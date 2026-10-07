@@ -720,3 +720,6 @@ agent-browser.json
 /spotlightArrowsHarness.html
 /thinkingDotHarness.html
 /trialCardHarness.html
+
+# Python bytecode (scripts/generate-sorox-logo.py imported by tablet/scripts)
+__pycache__/

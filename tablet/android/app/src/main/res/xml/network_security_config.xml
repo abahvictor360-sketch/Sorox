@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Soro X Tablet opens the desktop's companion page over plain HTTP on the
+     local network (http://<computer-ip>:4123). Android cannot list wildcard IP
+     ranges here, so cleartext is permitted app-wide; which hosts the app will
+     open is limited by server.allowNavigation in capacitor.config.json and by
+     www/pairing.js (private network addresses only). -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Soro X</string>
+    <string name="title_activity_main">Soro X</string>
+    <string name="package_name">app.sorox.tablet</string>
+    <string name="custom_url_scheme">app.sorox.tablet</string>
+</resources>

@@ -101,6 +101,10 @@ Soro X does not include Natively's private `premium` code or its hosted API. It 
 
 Also on your own key: **Company Intel** (add a Tavily key for live web research), **Cover Letter**, **Role Insight** (how your résumé fits the job, likely questions, a salary negotiation script), and in **Modes**: describe-a-mode generation, per-mode instructions and reference files. Live negotiation coaching during a call is not part of Soro X.
 
+## Soro X on Android tablets and iPad
+
+Soro X runs on your Mac or PC. **Soro X Tablet** ([`tablet/`](tablet/README.md)) pairs with it over your Wi-Fi: scan the QR code in **Settings → Sync** and follow live answers and the transcript, ask questions, trigger actions and send photos from the tablet. The *Soro X Tablet apps* GitHub Actions workflow builds the Android APK and the iPad app.
+
 ## The Free-for-Personal-Use, Source-Available Cluely Clone
 
 Natively started as a pixel-perfect recreation of Cluely's interface — then kept going. If you've used Cluely, you already know how to use Natively. Same overlay, same workflow, same shortcuts. Except it's free for personal, educational, research, and non-commercial use, source-available, runs locally, supports any LLM, and has never breached a single user's data.
