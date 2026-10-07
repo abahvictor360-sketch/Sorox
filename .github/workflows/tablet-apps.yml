@@ -52,7 +52,10 @@ jobs:
           distribution: temurin
           java-version: 21
           cache: gradle
-      - uses: android-actions/setup-android@v3
+      # The ubuntu runner ships the Android SDK (ANDROID_HOME) with licences
+      # accepted; Gradle installs any missing platform/build-tools itself.
+      - name: Android SDK
+        run: echo "ANDROID_HOME=$ANDROID_HOME" && test -d "$ANDROID_HOME"
       - run: npm ci
       - run: npm run build
       - run: npx cap sync android
