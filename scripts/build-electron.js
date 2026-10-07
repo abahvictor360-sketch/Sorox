@@ -43,9 +43,14 @@ if (fs.existsSync(electronDir)) {
 
 // Also include premium electron files if they exist
 const premiumDir = path.resolve(rootDir, 'premium/electron');
-if (fs.existsSync(premiumDir)) {
+const PREMIUM_PRESENT = fs.existsSync(premiumDir) && findTs(premiumDir).length > 0;
+if (PREMIUM_PRESENT) {
   entryPoints.push(...findTs(premiumDir).map(f => path.relative(rootDir, f)));
 }
+// Soro X: without the private premium sources (an empty or absent premium/),
+// build the core app the same way core smoke mode does. Every premium require()
+// is guarded at runtime, so those features fall back to "not available".
+const PREMIUM_EXTERNAL = CORE_SMOKE || !PREMIUM_PRESENT;
 
 const start = Date.now();
 
@@ -142,7 +147,7 @@ const buildOptions = {
     '.ts': 'ts',
     '.js': 'js',
   },
-  plugins: CORE_SMOKE ? [coreSmokePremiumExternalPlugin] : [],
+  plugins: PREMIUM_EXTERNAL ? [coreSmokePremiumExternalPlugin] : [],
   // EVAL-ONLY DNS fix, injected at the very top of every output bundle (runs
   // BEFORE esbuild's deferred __esm module initializers — a top-level statement
   // inside main.ts gets wrapped in a lazy init that never ran at process start).
@@ -194,6 +199,8 @@ if (WATCH) {
 } else {
   if (CORE_SMOKE) {
     console.log('[build-electron] Core smoke mode: private premium imports are external');
+  } else if (!PREMIUM_PRESENT) {
+    console.log('[build-electron] premium/ is empty: building the core app (premium features unavailable)');
   }
   build(buildOptions).then(() => {
     copyAssets();
