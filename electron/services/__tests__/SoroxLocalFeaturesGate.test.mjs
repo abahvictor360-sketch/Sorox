@@ -105,11 +105,11 @@ test('turning the switch off takes back the mode and profile mode unless Pro / t
     assert.ok(body.includes('clearActiveModeOnLicenseLoss()'));
 });
 
-test('the setting is declared and defaults to off', () => {
+test('the setting is declared and defaults to on (only an explicit false turns it off)', () => {
     const settings = fs.readFileSync(path.join(root, 'electron/services/SettingsManager.ts'), 'utf8');
     assert.match(settings, /soroxLocalFeatures\?: boolean;/);
     const helper = fs.readFileSync(path.join(root, 'electron/services/soroxLocalFeatures.ts'), 'utf8');
-    assert.ok(helper.includes("get('soroxLocalFeatures') === true"), 'only an explicit true turns it on');
+    assert.ok(helper.includes("get('soroxLocalFeatures') !== false"), 'on by default; only an explicit false turns it off');
 });
 
 test('preload, its interface and the renderer types all expose the switch', () => {

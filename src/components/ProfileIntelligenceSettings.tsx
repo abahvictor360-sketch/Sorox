@@ -1960,11 +1960,6 @@ function ProfileIntelligenceProGate({ onOpenNativelyAPI, onClose, onUseSoroxEngi
                 flexShrink: 0, background: 'var(--pig-bg)',
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                    {onUseSoroxEngine && (
-                        <button className="pig-text-btn" onClick={onUseSoroxEngine} data-testid="sorox-use-profile-engine">
-                            Use Soro X profile engine <ChevronRight size={12} />
-                        </button>
-                    )}
                     {onOpenNativelyAPI && (
                         <button className="pig-text-btn" onClick={onOpenNativelyAPI}>
                             I have a license <ChevronRight size={12} />
@@ -1974,16 +1969,28 @@ function ProfileIntelligenceProGate({ onOpenNativelyAPI, onClose, onUseSoroxEngi
 
                 <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--pig-sub-low)', letterSpacing: '-0.01em', lineHeight: 1.4 }}>
                     Currently your answers carry no personal context.<br/>
-                    <span style={{ color: '#fbbf24' }}>Unlock Pro to ground every answer in your identity, experience, and research.</span>
+                    <span style={{ color: '#fbbf24' }}>{onUseSoroxEngine
+                        ? 'Turn on the Soro X profile engine to ground every answer in your CV, using your own AI key.'
+                        : 'Unlock Pro to ground every answer in your identity, experience, and research.'}</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    {onUseSoroxEngine ? (
+                        /* Soro X: its own profile engine, on the user's AI key, is the main way in. */
+                        <button className="pig-cta-group" onClick={onUseSoroxEngine} data-testid="sorox-use-profile-engine-cta">
+                            Use Soro X profile engine
+                            <div className="pig-cta-icon-ring">
+                                <ChevronRight size={14} strokeWidth={2.5} />
+                            </div>
+                        </button>
+                    ) : (
                     <button className="pig-cta-group" onClick={() => openExternal(CHECKOUT_URLS.apiMax)}>
                         Unlock Pro
                         <div className="pig-cta-icon-ring">
                             <ArrowUpRight size={14} strokeWidth={2.5} />
                         </div>
                     </button>
+                    )}
                 </div>
             </div>
         </div>

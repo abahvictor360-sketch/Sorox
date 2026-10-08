@@ -9,11 +9,12 @@ import { SettingsManager } from './SettingsManager';
 
 export const SOROX_LOCAL_FEATURES_CHANGED = 'sorox-local-features-changed';
 
+/** On unless the user turned it off (an explicit false). */
 export function isSoroxLocalFeaturesEnabled(): boolean {
   try {
-    return SettingsManager.getInstance().get('soroxLocalFeatures') === true;
+    return SettingsManager.getInstance().get('soroxLocalFeatures') !== false;
   } catch {
-    return false;
+    return true;
   }
 }
 
