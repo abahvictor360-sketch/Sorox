@@ -87,14 +87,18 @@ const {
   resolveCalendarClientSecret,
 } = require('./lib/calendar-client-secret.cjs');
 const calendarClientSecret = resolveCalendarClientSecret(rootDir);
+// Soro X: the client ID can be baked too, so a build carries a complete client of
+// its own (Natively's client ID is useless without Natively's secret).
+const calendarClientId = (process.env.GOOGLE_CALENDAR_CLIENT_ID || '').trim();
 if (!calendarClientSecret) {
-  console.warn(`[build-electron] ${CALENDAR_SECRET_ENV} is not set (env or .env): calendar sync will not connect in this build.`);
+  console.warn(`[build-electron] ${CALENDAR_SECRET_ENV} is not set (env or .env): no built-in calendar client; users add their own in Settings → Calendar.`);
 }
 
 const buildOptions = {
   entryPoints,
   define: {
     [CALENDAR_SECRET_EXPRESSION]: JSON.stringify(calendarClientSecret),
+    'process.env.NATIVELY_BAKED_CALENDAR_CLIENT_ID': JSON.stringify(calendarClientId),
   },
   bundle: true,           // resolve all static + dynamic imports so postProcessor
                          // is inlined and the path rewrite works (vs bundle:false

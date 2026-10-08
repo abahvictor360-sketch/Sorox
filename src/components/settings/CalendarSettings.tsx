@@ -7,6 +7,7 @@ import { Collapse, CollapseItem, Presence, SettingsMotionReady, SwapLabel, useMo
 import { SettingsToggle } from './SettingsToggle';
 import { readCalendarSnapshot, unfinishedEvents, writeCalendarSnapshot } from '../../lib/calendarSnapshot.mjs';
 import './CalendarSettings.css';
+import { CalendarOAuthClientSetup } from './CalendarOAuthClientSetup';
 
 /*
   Settings › Calendar, in the language of Profile Intelligence and the Modes
@@ -457,6 +458,9 @@ export const CalendarSettings: React.FC = () => {
             </div>
           </Collapse>
         </section>
+
+        {/* Soro X: the Google sign-in client Calendar uses (your own, or one built in). */}
+        <CalendarOAuthClientSetup onChanged={() => { setError(null); window.electronAPI.getCalendarStatus().then(setStatus).catch(() => {}); }} />
 
         {/* ── The next 7 days ── */}
         <Collapse open={connected} className="!mt-0" skipStagger>

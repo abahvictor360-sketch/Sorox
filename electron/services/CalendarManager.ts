@@ -1,4 +1,5 @@
 import { app, safeStorage, shell } from 'electron';
+import { maskClientId, resolveCalendarClient, validateCalendarClient, type CalendarOAuthClient } from './calendarOAuthClient';
 import http from 'http';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -36,6 +37,8 @@ import { describeOAuthError, renderOAuthCallbackPage, type OAuthCallbackOutcome 
 */
 const DEFAULT_CALENDAR_CLIENT_ID = '814531619520-80ib40f38i5vdeg0j8kk81r0usojrt9a.apps.googleusercontent.com';
 const DEFAULT_CALENDAR_CLIENT_SECRET = process.env.NATIVELY_BAKED_CALENDAR_CLIENT_SECRET || '';
+// Soro X: a build can bake its own client ID too (scripts/build-electron.js).
+const BAKED_CALENDAR_CLIENT_ID = process.env.NATIVELY_BAKED_CALENDAR_CLIENT_ID || '';
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -62,15 +65,44 @@ const SCOPES = [
 /** Bounds the per-calendar requests one sync makes. */
 const MAX_SYNCED_CALENDARS = 20;
 const TOKEN_PATH = path.join(app.getPath('userData'), 'calendar_tokens.enc');
+// Soro X: the user's own Google OAuth client (Settings → Calendar), encrypted like the tokens.
+const CLIENT_PATH = path.join(app.getPath('userData'), 'calendar_oauth_client.enc');
+const NO_CLIENT_MESSAGE = 'Calendar needs your own Google sign-in client. In Settings → Calendar, open "Use your own Google sign-in" and add its Client ID and secret.';
+
+let userClientCache: { id: string; secret: string } | null | undefined;
+
+function loadUserClient(): { id: string; secret: string } | null {
+    if (userClientCache !== undefined) return userClientCache;
+    userClientCache = null;
+    try {
+        if (fs.existsSync(CLIENT_PATH) && safeStorage.isEncryptionAvailable()) {
+            const data = JSON.parse(safeStorage.decryptString(fs.readFileSync(CLIENT_PATH)));
+            if (typeof data?.id === 'string' && typeof data?.secret === 'string') userClientCache = { id: data.id, secret: data.secret };
+        }
+    } catch (e) {
+        console.warn('[CalendarManager] Could not read the saved Google OAuth client:', (e as Error)?.message);
+    }
+    return userClientCache;
+}
 
 /** Token-endpoint errors that mean the stored grant is dead and reconnecting is the only fix. */
 const DEAD_GRANT_ERRORS = new Set(['invalid_grant', 'invalid_client', 'unauthorized_client', 'deleted_client']);
 
-function calendarOAuthClient(): { id: string; secret: string } {
-    return {
-        id: process.env.GOOGLE_CALENDAR_CLIENT_ID || DEFAULT_CALENDAR_CLIENT_ID,
-        secret: process.env.GOOGLE_CALENDAR_CLIENT_SECRET || DEFAULT_CALENDAR_CLIENT_SECRET,
-    };
+function currentCalendarClient(): CalendarOAuthClient | null {
+    return resolveCalendarClient({
+        env: process.env,
+        user: loadUserClient(),
+        bakedId: BAKED_CALENDAR_CLIENT_ID,
+        bakedSecret: DEFAULT_CALENDAR_CLIENT_SECRET,
+        fallbackId: DEFAULT_CALENDAR_CLIENT_ID,
+    });
+}
+
+/** The client to sign in with; throws a message the Calendar screen shows when there is none. */
+function calendarOAuthClient(): CalendarOAuthClient {
+    const client = currentCalendarClient();
+    if (!client) throw new Error(NO_CLIENT_MESSAGE);
+    return client;
 }
 
 function base64Url(buf: Buffer): string {
@@ -333,6 +365,38 @@ export class CalendarManager extends EventEmitter {
         }
 
         this.emit('connection-changed', false);
+    }
+
+    // =========================================================================
+    // Soro X: the user's own Google OAuth client
+    // =========================================================================
+
+    public getOAuthClientInfo(): { configured: boolean; source: CalendarOAuthClient['source'] | null; clientId: string | null } {
+        const client = currentCalendarClient();
+        return { configured: !!client, source: client?.source ?? null, clientId: client ? maskClientId(client.id) : null };
+    }
+
+    /** Saves the user's client. Returns an error message, or null on success. */
+    public async setOAuthClient(id: string, secret: string): Promise<string | null> {
+        const problem = validateCalendarClient(id, secret);
+        if (problem) return problem;
+        if (!safeStorage.isEncryptionAvailable()) return 'This computer\'s secure storage is not available, so the client cannot be saved.';
+        const next = { id: id.trim(), secret: secret.trim() };
+        const previous = currentCalendarClient();
+        const tmpPath = CLIENT_PATH + '.tmp';
+        fs.writeFileSync(tmpPath, safeStorage.encryptString(JSON.stringify(next)));
+        fs.renameSync(tmpPath, CLIENT_PATH);
+        userClientCache = next;
+        // Tokens belong to the client that issued them: a different client means signing in again.
+        if (previous && previous.id !== next.id && this.isConnected) await this.disconnect();
+        return null;
+    }
+
+    public async clearOAuthClient(): Promise<void> {
+        const hadUserClient = !!loadUserClient();
+        try { if (fs.existsSync(CLIENT_PATH)) fs.unlinkSync(CLIENT_PATH); } catch { /* best effort */ }
+        userClientCache = null;
+        if (hadUserClient && this.isConnected) await this.disconnect();
     }
 
     public getConnectionStatus(): { connected: boolean; email?: string; name?: string } {

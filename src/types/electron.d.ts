@@ -969,6 +969,10 @@ export interface ElectronAPI {
   // Calendar
   calendarConnect: () => Promise<{ success: boolean; error?: string }>
   calendarDisconnect: () => Promise<{ success: boolean; error?: string }>
+  // Soro X: the user's own Google OAuth client for Calendar sync
+  calendarGetOAuthClient: () => Promise<{ configured: boolean; source: 'env' | 'user' | 'built-in' | null; clientId: string | null }>
+  calendarSetOAuthClient: (input: { clientId: string; clientSecret: string }) => Promise<{ success: boolean; error?: string; configured?: boolean; source?: 'env' | 'user' | 'built-in' | null; clientId?: string | null }>
+  calendarClearOAuthClient: () => Promise<{ success: boolean; configured?: boolean; source?: 'env' | 'user' | 'built-in' | null; clientId?: string | null }>
   getCalendarStatus: () => Promise<{ connected: boolean; email?: string; name?: string }>
   getSyncedCalendars: () => Promise<Array<{ id: string; name: string; primary: boolean; color?: string }>>
   /** Meeting detection (Settings › Calendar): offer to start when a call begins. */

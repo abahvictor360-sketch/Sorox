@@ -469,18 +469,15 @@ test('offline: a failed fetch keeps the last week and calendars instead of an em
     }
 });
 
-test('packaged build: with no env overrides, connect still opens Google with the committed client ID', async () => {
-    // A packaged app never loads .env. Reading the ID from the environment is
-    // how every release before 2026-09-26 shipped the "YOUR_CLIENT_ID_HERE"
-    // placeholder and refused to connect.
+test('packaged build with no client: connect refuses with setup guidance and opens nothing (Soro X)', async () => {
+    // Natively's builds bake Natively's client secret, so its committed client ID
+    // works there. Soro X builds do not have that secret: opening Google with the
+    // ID alone only ends in "client_secret is missing". With no client of the
+    // user's own and none built in, Connect explains the one-time setup instead.
     const env = setup({ envOverrides: false, tokenResponse: { status: 400, body: { error: 'invalid_grant' } } });
     try {
-        const flow = env.cm.startAuthFlow();
-        flow.catch(() => {});
-        await waitFor(() => env.opened.length === 1);
-        const clientId = new URL(env.opened[0]).searchParams.get('client_id');
-        assert.match(clientId, /^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/);
-        assert.notEqual(clientId, CLIENT_ID, 'this must be the committed default, not the test override');
+        await assert.rejects(() => env.cm.startAuthFlow(), /your own Google sign-in client/);
+        assert.equal(env.opened.length, 0, 'no browser opened for a sign-in that cannot work');
     } finally {
         await env.restore();
     }

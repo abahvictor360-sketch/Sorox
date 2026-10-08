@@ -16091,6 +16091,31 @@ export function initializeIpcHandlers(appState: AppState): void {
     }
   });
 
+  // Soro X: the user's own Google OAuth client for Calendar sync.
+  safeHandle('calendar-get-oauth-client', async () => {
+    const { CalendarManager } = require('./services/CalendarManager');
+    return CalendarManager.getInstance().getOAuthClientInfo();
+  });
+
+  safeHandle('calendar-set-oauth-client', async (_, input: { clientId?: unknown; clientSecret?: unknown }) => {
+    try {
+      const { CalendarManager } = require('./services/CalendarManager');
+      const error = await CalendarManager.getInstance().setOAuthClient(
+        typeof input?.clientId === 'string' ? input.clientId : '',
+        typeof input?.clientSecret === 'string' ? input.clientSecret : '',
+      );
+      return error ? { success: false, error } : { success: true, ...CalendarManager.getInstance().getOAuthClientInfo() };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  safeHandle('calendar-clear-oauth-client', async () => {
+    const { CalendarManager } = require('./services/CalendarManager');
+    await CalendarManager.getInstance().clearOAuthClient();
+    return { success: true, ...CalendarManager.getInstance().getOAuthClientInfo() };
+  });
+
   safeHandle('calendar-disconnect', async () => {
     const { CalendarManager } = require('./services/CalendarManager');
     await CalendarManager.getInstance().disconnect();

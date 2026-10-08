@@ -863,6 +863,10 @@ interface ElectronAPI {
   // Calendar
   calendarConnect: () => Promise<{ success: boolean; error?: string }>;
   calendarDisconnect: () => Promise<{ success: boolean; error?: string }>;
+  // Soro X: the user's own Google OAuth client for Calendar sync
+  calendarGetOAuthClient: () => Promise<{ configured: boolean; source: 'env' | 'user' | 'built-in' | null; clientId: string | null }>;
+  calendarSetOAuthClient: (input: { clientId: string; clientSecret: string }) => Promise<{ success: boolean; error?: string; configured?: boolean; source?: 'env' | 'user' | 'built-in' | null; clientId?: string | null }>;
+  calendarClearOAuthClient: () => Promise<{ success: boolean; configured?: boolean; source?: 'env' | 'user' | 'built-in' | null; clientId?: string | null }>;
   getCalendarStatus: () => Promise<{ connected: boolean; email?: string; name?: string }>;
   getSyncedCalendars: () => Promise<Array<{ id: string; name: string; primary: boolean; color?: string }>>;
   getMeetingDetectionEnabled: () => Promise<boolean>;
@@ -2749,6 +2753,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Calendar API
   calendarConnect: () => ipcRenderer.invoke('calendar-connect'),
   calendarDisconnect: () => ipcRenderer.invoke('calendar-disconnect'),
+  calendarGetOAuthClient: () => ipcRenderer.invoke('calendar-get-oauth-client'),
+  calendarSetOAuthClient: (input: { clientId: string; clientSecret: string }) => ipcRenderer.invoke('calendar-set-oauth-client', input),
+  calendarClearOAuthClient: () => ipcRenderer.invoke('calendar-clear-oauth-client'),
   getCalendarStatus: () => ipcRenderer.invoke('get-calendar-status'),
   getSyncedCalendars: () => ipcRenderer.invoke('calendar-get-synced-calendars'),
   getMeetingDetectionEnabled: () => ipcRenderer.invoke('get-meeting-detection-enabled'),

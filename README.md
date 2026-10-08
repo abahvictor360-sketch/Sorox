@@ -108,6 +108,17 @@ GitHub builds the installers: open **Actions → Soro X desktop apps**, pick the
 
 Keys are stored on your computer in the system's secure storage (Keychain / Windows Credential Manager), not sent anywhere except to that provider.
 
+## Connect Google Calendar
+
+Calendar sign-in needs a Google sign-in client of your own (Natively's builds use Natively's, which Soro X cannot). One time, about five minutes, free:
+
+1. [Create a Google Cloud project](https://console.cloud.google.com/projectcreate) and [turn on the Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com).
+2. [Set up the sign-in screen](https://console.cloud.google.com/auth/overview): **External**, app name, your email. Under **Audience**, add your Google account as a **test user**.
+3. [Create an OAuth client](https://console.cloud.google.com/auth/clients/create) of type **Desktop app**. Copy the **Client ID** and **Client secret**.
+4. In Soro X: **Settings → Calendar → Set up Google sign-in**, paste both, **Save**, then **Connect Google Calendar**.
+
+While the Google project is in "Testing", only the test users you list can sign in and Google asks you to sign in again every 7 days. To build installers with your client included, add repository secrets `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET`; the *Soro X desktop apps* workflow bakes them in.
+
 ## Soro X: profile engine with your own API key
 
 Soro X does not include Natively's private `premium` code or its hosted API. It ships its own profile engine in [`premium/`](premium/README.md) instead:

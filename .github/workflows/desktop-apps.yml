@@ -42,6 +42,11 @@ jobs:
       - name: Install dependencies (builds native modules)
         run: npm ci
       - name: Build
+        env:
+          # Optional repo secrets: bake your own Google Calendar sign-in client into
+          # the installer. Without them users add one in Settings → Calendar.
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+          GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
@@ -83,6 +88,11 @@ jobs:
       - name: Install dependencies (builds native modules)
         run: npm ci
       - name: Build
+        env:
+          # Optional repo secrets: bake your own Google Calendar sign-in client into
+          # the installer. Without them users add one in Settings → Calendar.
+          GOOGLE_CALENDAR_CLIENT_ID: ${{ secrets.GOOGLE_CALENDAR_CLIENT_ID }}
+          GOOGLE_CALENDAR_CLIENT_SECRET: ${{ secrets.GOOGLE_CALENDAR_CLIENT_SECRET }}
         run: |
           set -euo pipefail
           npm run build

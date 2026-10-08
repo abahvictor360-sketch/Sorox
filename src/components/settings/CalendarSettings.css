@@ -347,3 +347,32 @@
   .cal-pane .cp-card,
   .cal-pane .cp-row { animation: cp-fade-only 160ms ease backwards; animation-delay: 0ms !important; }
 }
+
+/* ── Soro X: "Use your own Google sign-in" (CalendarOAuthClientSetup.tsx) ── */
+.cp-oauth-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--cp-input-border); border-radius: var(--cp-r-md);
+  font-size: 12px; color: var(--cp-secondary);
+}
+.cp-oauth-row svg { flex-shrink: 0; }
+.cp-oauth-text { flex: 1; min-width: 0; }
+.cp-oauth-id { color: var(--cp-tertiary); }
+.cp-oauth-saved { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; color: var(--cp-accent); }
+.cp-oauth-box {
+  border: 1px solid var(--cp-input-border); border-radius: var(--cp-r-lg);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-top: 8px;
+}
+.cp-oauth-box .cp-desc { margin: 0; }
+.cp-oauth-steps { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.55; color: var(--cp-primary); display: flex; flex-direction: column; gap: 6px; }
+.cp-oauth-link {
+  display: inline-flex; align-items: center; gap: 2px; margin-left: 6px; padding: 0;
+  background: none; border: 0; cursor: pointer; font: inherit; font-weight: 600; color: var(--cp-accent);
+}
+.cp-oauth-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--cp-secondary); }
+.cp-oauth-field input {
+  font: inherit; font-size: 12px; color: var(--cp-primary); background: transparent;
+  border: 1px solid var(--cp-input-border); border-radius: var(--cp-r-sm); padding: 7px 9px;
+}
+.cp-oauth-field input:focus { outline: none; border-color: var(--cp-accent); }
+.cp-oauth-actions { display: flex; gap: 8px; }
+.cp-oauth-note { margin: 0; font-size: 11px; line-height: 1.5; color: var(--cp-tertiary); }
