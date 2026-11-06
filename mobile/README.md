@@ -10,6 +10,12 @@ The Soro X interview assistant for Android phones (and iPhone/iPad). It runs on
   questions, Clarify, an "Ask anything" box, **Read screen** (photograph a
   question on a screen, whiteboard or paper and get the answer) and **Note**.
   When pay comes up, the **negotiation coach** says what to do and what to say.
+- **Knows your voice**: record about 15 seconds once (Me > Settings > Your
+  voice). Every line is then matched against your voice print, so your own
+  words and questions are never answered; it also learns the interviewer's
+  voice as the interview goes, and from any line you correct. Only a voice
+  print (numbers) is kept, on the phone. Works with Offline (Whisper),
+  Deepgram, Groq and OpenAI listening.
 - **Modes**: Job interview, Technical interview, Sales call, Meeting,
   Class / lecture, General, each with your own instructions.
 - **Notes**: every session is saved with AI-written notes (summary, questions

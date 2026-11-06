@@ -4,6 +4,7 @@ import { PROVIDERS, complete, liveModelFor, modelFor } from '../lib/ai';
 import { MODES } from '../lib/interview';
 import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
+import { VoiceSetup } from '../components/VoiceSetup';
 import { ModeIcon } from '../components/ModeIcon';
 import { CircleCheck } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
@@ -95,6 +96,8 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
           <select value={settings.language} onChange={(e) => set({ language: e.target.value })}>{[...new Set([settings.language, ...LANGS])].map((l) => <option key={l}>{l}</option>)}</select>
         </label>
       </div>
+
+      <VoiceSetup settings={settings} />
 
       <div className="card">
         <h3>Answers</h3>

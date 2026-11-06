@@ -251,3 +251,9 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .update-banner { margin: 4px 12px 0; padding: 8px 10px 8px 14px; display: flex; align-items: center; gap: 10px; border-radius: 14px; border-color: var(--bubble-line); font-size: 14px; }
 .update-banner svg { color: var(--accent-2); flex: none; }
 .update-get { text-decoration: none; border-radius: var(--r-sm); padding: 6px 12px; min-height: 36px; display: inline-flex; align-items: center; }
+.voice-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--faint); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+.voice-badge.on { color: var(--you); border-color: color-mix(in srgb, var(--you) 40%, transparent); }
+.card h3 svg { vertical-align: -2px; color: var(--accent-2); }
+.meter.wide { width: auto; flex: 1; height: 6px; }
+.read-aloud { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--glass-2); border-radius: 8px; font-size: 15.5px; line-height: 1.55; }
+.read-aloud small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }

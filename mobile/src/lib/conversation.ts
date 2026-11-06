@@ -70,11 +70,20 @@ export class Conversation {
 
   constructor(private readonly max = 400) {}
 
-  add(text: string, at = Date.now(), speaker?: number): Segment {
+  /**
+   * @param voice who it was by voice (Settings > Your voice), when known: it
+   *   wins over wording and turn-taking, and teaches the diarized speaker's role.
+   */
+  add(text: string, at = Date.now(), speaker?: number, voice?: 'you' | 'them'): Segment {
     const question = looksLikeQuestion(text);
     const prev = this.segments[this.segments.length - 1];
     const seg: Segment = { id: this.nextId++, text: text.trim(), at, speaker, question, role: 'unknown' };
-    seg.role = speaker !== undefined ? this.roleForSpeaker(seg, prev) : this.roleByTurns(seg, prev);
+    if (voice) {
+      seg.role = voice;
+      if (speaker !== undefined && !this.speakerRole.has(speaker)) this.speakerRole.set(speaker, voice);
+    } else {
+      seg.role = speaker !== undefined ? this.roleForSpeaker(seg, prev) : this.roleByTurns(seg, prev);
+    }
     this.segments.push(seg);
     if (this.segments.length > this.max) this.segments.splice(0, this.segments.length - this.max);
     return seg;

@@ -10,6 +10,7 @@ import { MODES, QUICK_ACTIONS, SKIP, looksLikeQuestion, answerFromImage, answerQ
 import { Conversation, firstPersonRatio, type Role, type Segment } from '../lib/conversation';
 import { NegotiationConversationTracker, detectPhase, textHasCompEvidence } from '../lib/negotiationTracker';
 import { coach, type Coaching } from '../lib/negotiation';
+import { VoiceMatcher, loadVoice, type VoicePrint } from '../lib/voice';
 import { useTranscriber } from '../lib/useTranscriber';
 import { fileToImagePart } from '../lib/image';
 import { newSession, upsertSession, sessionTranscript, type Session } from '../lib/sessions';
@@ -18,7 +19,7 @@ import { warmUp, type ChatMessage } from '../lib/ai';
 import { sameQuestion } from '../lib/conversation';
 import { Markdown } from '../components/Markdown';
 import { ModeIcon } from '../components/ModeIcon';
-import { ArrowUp, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
+import { ArrowUp, AudioLines, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
 import { CoachCard } from '../components/CoachCard';
 
 type ItemKind = 'answer' | 'action' | 'image' | 'chat' | 'coach' | 'note';
@@ -120,7 +121,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   }, [patch, remove, ensureSession, saveSession]);
 
   // ── Answering ──
-  const answer = useCallback((question: string, context: string, opts: { auto: boolean }) => {
+  const answer = useCallback((question: string, context: string, opts: { auto: boolean }): number => {
     const s = settingsRef.current; const p = profileRef.current;
     const pay = (s.mode === 'interview' || s.mode === 'technical') && (textHasCompEvidence(question) || (tracker.isActive() && !!detectPhase(question)));
     if (pay) {
@@ -136,10 +137,11 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         const aid = addItem({ kind: 'answer', prompt: question, auto: opts.auto });
         void run(aid, question, 'answer', (on, sig) => answerQuestion(s, p, question, context, on, sig, { allowSkip: opts.auto }));
       })();
-      return;
+      return id;
     }
     const id = addItem({ kind: 'answer', prompt: question, auto: opts.auto });
     void run(id, question, 'answer', (on, sig) => answerQuestion(s, p, question, context, on, sig, { allowSkip: opts.auto }));
+    return id;
   }, [addItem, patch, remove, run, conv, tracker, ensureSession, saveSession]);
 
   const answerPending = useCallback(() => {
@@ -151,14 +153,34 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
 
   // ── Transcript in ──
   // Early answers: started from the live caption before the final transcript.
-  const early = useRef<{ text: string; at: number } | null>(null);
+  const early = useRef<{ text: string; at: number; itemId: number } | null>(null);
 
-  const process = useCallback((text: string, speaker?: number, at = Date.now()) => {
-    const seg = conv.add(text, at, speaker);
-    // Already being answered from the live caption: do not answer it twice.
+  // Your voice (Settings > Your voice): the matcher compares each line with it
+  // and learns the other voices as the interview goes. Prints are kept per line
+  // so a correction can teach it.
+  const voiceRef = useRef<VoiceMatcher>(new VoiceMatcher(loadVoice()));
+  const prints = useRef(new Map<number, VoicePrint>());
+  const [voiceOn, setVoiceOn] = useState(() => !!loadVoice());
+
+  const process = useCallback((text: string, speaker?: number, at = Date.now(), print?: VoicePrint | null) => {
+    const verdict = voiceRef.current.classify(print);
+    if ((window as any).__SOROX_TEST__) ((window as any).__voiceLog ??= []).push({ text, verdict, hasPrint: !!print });
+    const seg = conv.add(text, at, speaker, verdict.who === 'unsure' ? undefined : verdict.who);
+    if (print) {
+      prints.current.set(seg.id, print);
+      // Learn from lines it is sure about. Before it has heard the interviewer,
+      // a plain question (no "I"/"my") that does not sound like you counts too.
+      if (verdict.who !== 'unsure') voiceRef.current.learn(print, verdict.who);
+      else if (seg.question && firstPersonRatio(seg.text) < 0.08 && verdict.you < (loadVoice()?.selfScore ?? 1) * 0.4) voiceRef.current.learn(print, 'them');
+    }
+    // Already being answered from the live caption: do not answer it twice,
+    // and take the answer back if it was you speaking after all.
     const e = early.current;
     const earlyCovered = !!e && at - e.at < 20_000 && sameQuestion(e.text, seg.text);
-    if (earlyCovered) { conv.markAnswered([seg.id]); early.current = null; }
+    if (earlyCovered) {
+      conv.markAnswered([seg.id]); early.current = null;
+      if (seg.role === 'you') { controllers.current.get(e!.itemId)?.abort(); remove(e!.itemId); }
+    }
     setSegments([...conv.segments]);
     const s = ensureSession();
     s.lines.push({ text: seg.text, role: seg.role, at: seg.at });
@@ -172,25 +194,27 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
       if (debounce.current) window.clearTimeout(debounce.current);
       debounce.current = window.setTimeout(() => { debounce.current = null; answerPending(); }, /\?\s*$/.test(seg.text) ? 150 : 600);
     }
-  }, [conv, tracker, ensureSession, saveSession, answerPending]);
+  }, [conv, tracker, ensureSession, saveSession, answerPending, remove]);
 
   // Standby: the mic is on but nothing is kept until the first question is
   // heard; then Soro X turns itself on (session, transcript, answers) with the
   // last few lines as context.
   const [standby, setStandby] = useState(false);
   const standbyRef = useRef(false);
-  const standbyBuf = useRef<{ text: string; speaker?: number; at: number }[]>([]);
-  const onFinal = useCallback((text: string, meta?: { speaker?: number }) => {
+  const standbyBuf = useRef<{ text: string; speaker?: number; at: number; voice?: VoicePrint | null }[]>([]);
+  const onFinal = useCallback((text: string, meta?: { speaker?: number; voice?: VoicePrint | null }) => {
     if (standbyRef.current) {
       const now = Date.now();
-      standbyBuf.current = [...standbyBuf.current, { text, speaker: meta?.speaker, at: now }].filter((l) => now - l.at < 60_000).slice(-4);
+      standbyBuf.current = [...standbyBuf.current, { text, speaker: meta?.speaker, at: now, voice: meta?.voice }].filter((l) => now - l.at < 60_000).slice(-4);
+      // Wake on a question, unless it is your own voice asking it.
       if (!(looksLikeQuestion(text) && firstPersonRatio(text) < 0.15)) return;
+      if (voiceRef.current.classify(meta?.voice).who === 'you') return;
       standbyRef.current = false; setStandby(false);
       const buf = standbyBuf.current; standbyBuf.current = [];
-      for (const l of buf) process(l.text, l.speaker, l.at);
+      for (const l of buf) process(l.text, l.speaker, l.at, l.voice);
       return;
     }
-    process(text, meta?.speaker);
+    process(text, meta?.speaker, Date.now(), meta?.voice);
   }, [process]);
 
   const mic = useTranscriber(settings, onFinal);
@@ -206,8 +230,8 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
     const wait = /\?\s*$/.test(t) ? 200 : 700;
     const id = window.setTimeout(() => {
       if (early.current && Date.now() - early.current.at < 20_000 && sameQuestion(early.current.text, t)) return;
-      early.current = { text: t, at: Date.now() };
-      answer(t, conv.transcript(), { auto: true });
+      const itemId = answer(t, conv.transcript(), { auto: true });
+      early.current = { text: t, at: Date.now(), itemId };
     }, wait);
     return () => window.clearTimeout(id);
   }, [mic.interim, answer, conv]);
@@ -223,6 +247,8 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   const stopRef = useRef<(() => Promise<void>) | null>(null);
 
   const start = useCallback(async (opts: { standby?: boolean } = {}) => {
+    const profile = loadVoice();
+    voiceRef.current = new VoiceMatcher(profile); prints.current.clear(); setVoiceOn(!!profile);
     standbyRef.current = !!opts.standby; setStandby(!!opts.standby); standbyBuf.current = [];
     if (!opts.standby) ensureSession();
     warmUp(settingsRef.current);
@@ -311,6 +337,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
 
   const setRole = (seg: Segment, role: Role) => {
     conv.setRole(seg.id, role);
+    if (role !== 'unknown') voiceRef.current.learn(prints.current.get(seg.id), role);
     setSegments([...conv.segments]);
     setMenuFor(null);
   };
@@ -410,6 +437,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
           <button className="pane-head" onClick={() => setShowTranscript(!showTranscript)}>
             <span>Transcript</span>
             <span className="legend"><i className="r-them" />Interviewer <i className="r-you" />You</span>
+            <span className={`voice-badge ${voiceOn && settings.stt !== 'device' ? 'on' : ''}`} title={voiceOn ? (settings.stt === 'device' ? 'Voice match needs Offline, Deepgram, Groq or OpenAI listening' : 'Recognising your voice') : 'Record your voice in Me > Settings so Soro X always knows when it is you'}><AudioLines size={12} aria-hidden />{voiceOn ? (settings.stt === 'device' ? 'Voice: n/a' : 'Voice match') : 'No voice sample'}</span>
             <span className="chev">{showTranscript ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}</span>
           </button>
           <div className="lines" ref={transcriptRef}>

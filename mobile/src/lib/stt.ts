@@ -6,12 +6,18 @@
 //            speakers apart (diarization), so questions and answers are attributed
 //   openai / groq   each utterance (cut at natural pauses) sent for transcription
 import type { Settings } from './settings';
-import { VadRecorder, encodeWav } from './vad';
+import { AudioTap, VadRecorder, encodeWav } from './vad';
 import { loadWhisper, transcribeLocal } from './whisper';
+import { loadVoice, voicePrint, type VoicePrint } from './voice';
+
+/** Only keep audio for voice matching when you have recorded your voice. */
+const loadVoiceEnabled = () => !!loadVoice();
 
 export interface FinalMeta {
   /** Speaker number from diarization (Deepgram), when known. */
   speaker?: number;
+  /** Voice print of the utterance (lib/voice.ts), when its audio was available. */
+  voice?: VoicePrint | null;
 }
 
 export interface TranscriptHandlers {
@@ -48,10 +54,22 @@ export function sttNeedsKey(settings: Settings): string | null {
   return null;
 }
 
+/**
+ * With a voice sample saved, ask for the microphone's plain sound: noise
+ * suppression and automatic volume reshape each voice differently from moment
+ * to moment, which made your own voice look like someone else's. The
+ * transcription services handle background noise on their own.
+ */
+export function micConstraints(): MediaTrackConstraints {
+  return loadVoiceEnabled()
+    ? { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }
+    : { echoCancellation: true, noiseSuppression: true };
+}
+
 async function micStream(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) throw new Error('This device does not allow microphone recording here.');
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+    return await navigator.mediaDevices.getUserMedia({ audio: micConstraints(), video: false });
   } catch {
     throw new Error('Microphone access was not allowed. Allow it for Soro X in your phone\'s settings.');
   }
@@ -142,6 +160,10 @@ class DeepgramTranscriber implements Transcriber {
   private utterance = '';
   /** Words per speaker in the current utterance, to name its main speaker. */
   private speakerWords = new Map<number, number>();
+  /** The audio, kept for a minute, to match each utterance's voice. */
+  private tap: AudioTap | null = null;
+  /** Where the current utterance sits in the stream (seconds), from Deepgram's timings. */
+  private span: { from: number; to: number } | null = null;
   constructor(private settings: Settings, private h: TranscriptHandlers) {}
 
   async start() {
@@ -161,6 +183,9 @@ class DeepgramTranscriber implements Transcriber {
       if (msg.type !== 'Results') return;
       const text: string = msg.channel?.alternatives?.[0]?.transcript ?? '';
       if (msg.is_final) {
+        if (text && typeof msg.start === 'number' && typeof msg.duration === 'number') {
+          this.span = { from: this.span?.from ?? msg.start, to: msg.start + msg.duration };
+        }
         for (const w of msg.channel?.alternatives?.[0]?.words ?? []) {
           if (typeof w?.speaker === 'number') this.speakerWords.set(w.speaker, (this.speakerWords.get(w.speaker) ?? 0) + 1);
         }
@@ -180,6 +205,8 @@ class DeepgramTranscriber implements Transcriber {
     const mimeType = recorderMime();
     this.rec = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
     this.rec.ondataavailable = (e) => { if (e.data.size && ws.readyState === WebSocket.OPEN) ws.send(e.data); };
+    // Start the voice tap with the recording, so Deepgram's times line up with it.
+    if (loadVoiceEnabled()) { this.tap = new AudioTap(60); await this.tap.start(this.stream).catch(() => { this.tap = null; }); }
     this.rec.start(250);
     this.h.onState?.(true);
   }
@@ -190,8 +217,10 @@ class DeepgramTranscriber implements Transcriber {
     let speaker: number | undefined; let best = 0;
     for (const [sp, n] of this.speakerWords) if (n > best) { best = n; speaker = sp; }
     this.speakerWords.clear();
+    const span = this.span; this.span = null;
+    const voice = this.tap && span ? voicePrint(this.tap.slice(span.from, span.to)) : null;
     this.h.onInterim('');
-    if (text) this.h.onFinal(text, { speaker });
+    if (text) this.h.onFinal(text, { speaker, voice });
   }
 
   async stop() {
@@ -202,6 +231,7 @@ class DeepgramTranscriber implements Transcriber {
       setTimeout(() => this.ws?.close(), 500);
     }
     this.flush();
+    await this.tap?.stop(); this.tap = null;
     this.h.onState?.(false);
   }
 }
@@ -216,7 +246,7 @@ class ClipTranscriber implements Transcriber {
   async start() {
     this.stream = await micStream();
     this.vad = new VadRecorder({
-      onUtterance: (pcm) => void this.transcribe(encodeWav(pcm)),
+      onUtterance: (pcm) => void this.transcribe(encodeWav(pcm), voicePrint(pcm)),
       onLevel: this.h.onLevel,
       onSpeaking: (on) => this.h.onInterim(on ? '…' : ''),
     });
@@ -224,7 +254,7 @@ class ClipTranscriber implements Transcriber {
     this.h.onState?.(true);
   }
 
-  private async transcribe(blob: Blob) {
+  private async transcribe(blob: Blob, voice: VoicePrint | null) {
     const isOpenAi = this.provider === 'openai';
     const key = this.settings.keys[this.provider]?.trim();
     const form = new FormData();
@@ -237,7 +267,7 @@ class ClipTranscriber implements Transcriber {
       });
       if (!res.ok) { this.h.onError(`${isOpenAi ? 'OpenAI' : 'Groq'} transcription failed (${res.status}).`); return; }
       const text = String((await res.json())?.text ?? '').trim();
-      if (text && !isHallucination(text)) this.h.onFinal(text);
+      if (text && !isHallucination(text)) this.h.onFinal(text, { voice });
     } catch {
       this.h.onError('Could not reach the transcription service. No internet? Switch Listening to "Offline (Whisper)".');
     }
@@ -274,8 +304,10 @@ class WhisperTranscriber implements Transcriber {
           if (!this.running && !pcm.length) return;
           this.h.onInterim('…');
           try {
+            // The print first: transcribing hands the audio buffer to the worker.
+            const voice = voicePrint(pcm);
             const text = await transcribeLocal(pcm, this.settings.language);
-            if (text && !isHallucination(text)) this.h.onFinal(text);
+            if (text && !isHallucination(text)) this.h.onFinal(text, { voice });
           } catch (e: any) {
             this.h.onError(String(e?.message ?? e));
           } finally { this.h.onInterim(''); }
