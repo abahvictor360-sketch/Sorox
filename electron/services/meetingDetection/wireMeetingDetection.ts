@@ -50,6 +50,8 @@ export interface MeetingDetectionDeps {
     /** The calendar's recent list (CalendarManager.getCachedEvents), or null. */
     events: () => MatchableEvent[] | null;
     requestStart: (req: MeetingStartRequest) => void;
+    /** Soro X: start straight away instead of asking (Settings › Calendar › Start automatically). */
+    autoStart?: () => boolean;
     notify: (n: OsNotification) => boolean;
     live?: LiveMeetingSource;
     now?: () => number;
@@ -83,6 +85,13 @@ export function wireMeetingDetection(deps: MeetingDetectionDeps): MeetingDetecto
         }),
         isMeetingActive: deps.isMeetingActive,
         onDetected: (d) => {
+            if (deps.autoStart?.()) {
+                // No notification is shown, so the native-prompt gate does not apply.
+                const { start } = describeDetection(d, deps.events(), now());
+                if (!deps.isMeetingActive()) deps.requestStart(start);
+                console.log(`[MeetingDetection] ${d.app} call detected (${d.via}); started automatically`);
+                return;
+            }
             if (deps.promptsBlocked()) {
                 console.log(`[MeetingDetection] ${d.app} call detected; prompt skipped (Undetectable or a disguise is on)`);
                 return;

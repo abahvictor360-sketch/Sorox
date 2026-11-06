@@ -16147,6 +16147,13 @@ export function initializeIpcHandlers(appState: AppState): void {
     require('./services/meetingDetection/wireMeetingDetection').setMeetingDetectionActive(on);
     return { success: true };
   });
+  // Soro X: start automatically when a call is detected, instead of asking. Unset = off.
+  safeHandle('get-meeting-auto-start', async () => SettingsManager.getInstance().get('meetingAutoStart') === true);
+  safeHandle('set-meeting-auto-start', async (_, on: boolean) => {
+    if (typeof on !== 'boolean') return { success: false };
+    if (!SettingsManager.getInstance().set('meetingAutoStart', on)) return { success: false, error: 'settings_store_degraded' };
+    return { success: true };
+  });
 
   safeHandle('calendar-refresh', async () => {
     const { CalendarManager } = require('./services/CalendarManager');

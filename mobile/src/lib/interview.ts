@@ -1,9 +1,9 @@
 // Soro X Mobile — interview logic: spotting questions in a transcript, and the
 // prompts behind live answers, practice feedback and preparation documents.
 // Every prompt is grounded in the user's own CV and target job (profile.ts).
-import { complete, completeJson, type Effort } from './ai';
-import { profileContext, type Profile } from './profile';
-import type { Settings } from './settings';
+import { complete, completeJson, type ChatMessage, type Effort, type ImagePart } from './ai';
+import { hasProfile, profileContext, type Profile } from './profile';
+import type { ModeId, Settings } from './settings';
 
 // ─── Question detection ─────────────────────────────────────────────────────
 
@@ -29,36 +29,183 @@ export function latestQuestion(segments: string[]): { question: string; context:
   return null;
 }
 
+// ─── Modes (like the desktop's Modes) ───────────────────────────────────────
+
+export const MODES: { id: ModeId; label: string; icon: string; blurb: string; role: string; usesProfile: boolean }[] = [
+  { id: 'interview', label: 'Job interview', icon: '💼', blurb: 'Answers as you, from your CV and the job.', role: 'a job candidate in an interview', usesProfile: true },
+  { id: 'technical', label: 'Technical interview', icon: '🧑‍💻', blurb: 'Coding, system design and technical questions.', role: 'a candidate in a technical interview (coding, system design, technical depth)', usesProfile: true },
+  { id: 'sales', label: 'Sales call', icon: '📈', blurb: 'Objections, pricing and next steps.', role: 'a salesperson on a call with a prospect', usesProfile: false },
+  { id: 'meeting', label: 'Meeting', icon: '👥', blurb: 'What to say when you are asked something.', role: 'a professional in a work meeting', usesProfile: true },
+  { id: 'lecture', label: 'Class / lecture', icon: '🎓', blurb: 'Explains questions the teacher asks.', role: 'a student in a class or lecture', usesProfile: false },
+  { id: 'general', label: 'General', icon: '✨', blurb: 'Any conversation.', role: 'the user in a conversation', usesProfile: false },
+];
+
+export const modeOf = (settings: Settings) => MODES.find((m) => m.id === settings.mode) ?? MODES[0];
+
+function modeContext(settings: Settings, profile: Profile): string {
+  const mode = modeOf(settings);
+  const notes = settings.modeNotes?.[mode.id]?.trim();
+  const prof = mode.usesProfile || hasProfile(profile) ? profileContext(profile) : '';
+  return [prof, notes ? `<mode_instructions>\n${notes}\n</mode_instructions>` : ''].filter(Boolean).join('\n');
+}
+
 // ─── Live answers ───────────────────────────────────────────────────────────
 
-const ANSWER_SYSTEM = (style: Settings['answerStyle']) => `You help a job candidate answer interview questions in real time. They glance at your text and say it in their own words.
+export const SKIP = '[[SKIP]]';
 
-Rules:
-- Answer as the candidate, in the first person, using ONLY facts from <candidate> / <candidate_cv>, <target_job> and <candidate_notes>. Never invent employers, numbers, dates or skills. If the profile does not cover something, give an honest, general answer and say what to emphasise instead.
-- Behavioural questions ("tell me about a time…"): pick the single best real story and structure it as Situation → Task → Action → Result.
-- Technical questions: give the approach first, then key points, trade-offs, and a one-line summary. Include short code only if asked to write code.
-- Salary questions: give a range anchored on the role and market, deflect "current salary", and keep it polite.
-- Connect answers to the target job's requirements when relevant.
-- ${style === 'concise'
+const ANSWER_SYSTEM = (settings: Settings) => {
+  const mode = modeOf(settings);
+  return `You help ${mode.role} in real time. They glance at your text and say it in their own words.
+
+The transcript comes from one microphone and labels each line Interviewer / Candidate / Speaker (unsure); the labels can be wrong. "The candidate" below means the user you help.
+
+First decide: is the latest line a question or request that the candidate should answer now? If it is the candidate speaking (answering, thinking aloud, or asking the other side their own question), or it is small talk that needs no help, reply with exactly ${SKIP} and nothing else.
+
+Otherwise answer it. Rules:
+- Answer as the candidate, in the first person${mode.usesProfile ? ', using ONLY facts from <candidate> / <candidate_cv>, <target_job> and <candidate_notes>. Never invent employers, numbers, dates or skills. If the profile does not cover something, give an honest, general answer and say what to emphasise instead' : ''}.
+- Behavioural questions ("tell me about a time…"): the single best real story as Situation → Task → Action → Result.
+- Technical questions: the approach first, then key points, trade-offs, and a one-line summary. Short code only if they ask for code.
+- Salary questions: a range anchored on the role and market; deflect "current salary"; polite.
+- Follow <mode_instructions> when present.
+- ${settings.answerStyle === 'concise'
     ? 'Format: a bold one-line headline answer, then 3-5 short bullet points they can speak from. No preamble, under 120 words.'
     : 'Format: a bold one-line headline, 3-5 bullets, then a short ready-to-say script (4-6 sentences). Under 250 words.'}
 - Plain markdown only (bold and bullets). No headings, no "Sure!".`;
+};
 
 export async function answerQuestion(
   settings: Settings, profile: Profile, question: string, context: string,
-  onText: (delta: string, full: string) => void, signal?: AbortSignal,
+  onText: (delta: string, full: string) => void, signal?: AbortSignal, opts: { allowSkip?: boolean } = {},
 ): Promise<string> {
-  const content = `${profileContext(profile) || '(No CV added yet — answer generally and remind them to add their CV in Profile.)'}
+  const ctx = modeContext(settings, profile);
+  const content = `${ctx || (modeOf(settings).usesProfile ? '(No CV added yet — answer generally and remind them to add their CV in Profile.)' : '')}
 
-Recent conversation (for context; may include the candidate's own words):
+Conversation so far:
 ${context || '(none)'}
 
-Interviewer's question: "${question}"`;
-  return complete(settings, {
-    system: ANSWER_SYSTEM(settings.answerStyle),
+Latest line${opts.allowSkip === false ? ' (the candidate asked for help with this, so do not skip)' : ''}: "${question}"`;
+  // Hold back the first characters until we know the reply is not a skip.
+  let shown = false;
+  const out = await complete(settings, {
+    system: ANSWER_SYSTEM(settings),
     messages: [{ role: 'user', content }],
     effort: 'low',
     maxTokens: 2000,
+    onText: (d, full) => {
+      if (!shown) {
+        const t = full.trimStart();
+        if (SKIP.startsWith(t.slice(0, SKIP.length)) && t.length < SKIP.length + 1) return;
+        if (t.startsWith(SKIP)) return;
+        shown = true;
+        onText(full, full);
+        return;
+      }
+      onText(d, full);
+    },
+    signal,
+  });
+  return out.trim().startsWith(SKIP) ? SKIP : out;
+}
+
+// ─── Quick actions (the desktop's buttons) ──────────────────────────────────
+
+export type QuickAction = 'what_to_say' | 'shorten' | 'recap' | 'follow_up' | 'clarify';
+
+export const QUICK_ACTIONS: { id: QuickAction; label: string }[] = [
+  { id: 'what_to_say', label: 'What should I say?' },
+  { id: 'shorten', label: 'Shorten' },
+  { id: 'recap', label: 'Recap' },
+  { id: 'follow_up', label: 'Follow-up questions' },
+  { id: 'clarify', label: 'Clarify' },
+];
+
+const QUICK_PROMPTS: Record<QuickAction, string> = {
+  what_to_say: 'Based on the conversation, tell the candidate exactly what to say next (first person, ready to speak). Bold one-line headline, then 3-5 bullets.',
+  shorten: 'Rewrite the last suggested answer much shorter: one bold sentence and at most 3 bullets, same facts.',
+  recap: 'Recap the conversation so far in 4-6 bullets: what was asked, what the candidate said, anything left open.',
+  follow_up: 'Suggest 3-4 smart questions the candidate could ask the other side now, based on the conversation. One line each.',
+  clarify: 'Suggest one short, polite clarifying question the candidate can ask about the last question, and why it helps.',
+};
+
+export async function quickAction(
+  settings: Settings, profile: Profile, action: QuickAction, transcript: string, lastAnswer: string,
+  onText: (delta: string, full: string) => void, signal?: AbortSignal,
+): Promise<string> {
+  return complete(settings, {
+    system: `You help ${modeOf(settings).role} in real time. ${modeOf(settings).usesProfile ? 'Use only facts from the candidate profile; never invent experience.' : ''} Plain markdown (bold, bullets). No preamble.`,
+    messages: [{ role: 'user', content: `${modeContext(settings, profile)}
+
+Conversation (labels may be wrong):
+${transcript || '(nothing yet)'}
+
+Last suggested answer:
+${lastAnswer || '(none)'}
+
+Task: ${QUICK_PROMPTS[action]}` }],
+    effort: 'low',
+    maxTokens: 1500,
+    onText,
+    signal,
+  });
+}
+
+// ─── Reading a question from a photo of the screen ──────────────────────────
+
+export async function answerFromImage(
+  settings: Settings, profile: Profile, image: ImagePart, transcript: string,
+  onText: (delta: string, full: string) => void, signal?: AbortSignal,
+): Promise<string> {
+  return complete(settings, {
+    system: `${ANSWER_SYSTEM(settings).split('First decide:')[0]}The image is a photo of a screen, whiteboard or paper. Find the question(s) or task on it (a coding problem, a multiple-choice question, an interview prompt, a form…) and answer them.
+Start with the question you found in one italic line (*Question: …*), then the answer. For multiple choice, give the letter and a one-line reason. For code, give working code in a fenced block, then complexity. If no question is visible, say what you see and what you can help with.`,
+    messages: [{ role: 'user', content: `${modeContext(settings, profile)}\n\nConversation so far:\n${transcript || '(none)'}\n\nAnswer the question in this image.`, images: [image] }],
+    effort: 'medium',
+    maxTokens: 4000,
+    onText,
+    signal,
+  });
+}
+
+// ─── Notes ──────────────────────────────────────────────────────────────────
+
+export async function writeNotes(settings: Settings, profile: Profile, transcript: string, myNotes: string, onText?: (d: string, full: string) => void): Promise<string> {
+  return complete(settings, {
+    system: 'You write clear, faithful notes from a conversation transcript (one microphone; speaker labels may be wrong). Never invent anything that was not said. Markdown with short headings and bullets.',
+    messages: [{ role: 'user', content: `${modeOf(settings).usesProfile ? profileContext(profile) : ''}
+
+Transcript:
+${transcript.slice(-60_000) || '(empty)'}
+
+The user's own notes:
+${myNotes || '(none)'}
+
+Write the notes with these sections (skip any that would be empty):
+## Summary (3-4 sentences)
+## Questions asked (each question, then one line on how it was answered)
+## Key points
+## Action items / follow-ups
+## How it went (${settings.mode === 'interview' || settings.mode === 'technical' ? 'strengths, what to improve, and what to prepare for the next round' : 'decisions made and open questions'})` }],
+    effort: 'medium',
+    maxTokens: 6000,
+    onText,
+  });
+}
+
+// ─── Ask anything (chat) ────────────────────────────────────────────────────
+
+export async function chat(
+  settings: Settings, profile: Profile, history: ChatMessage[], transcript: string,
+  onText: (delta: string, full: string) => void, signal?: AbortSignal,
+): Promise<string> {
+  return complete(settings, {
+    system: `You are Soro X, an assistant helping ${modeOf(settings).role}. Be concise and practical. ${modeOf(settings).usesProfile ? 'Ground anything about the user in their profile; never invent experience.' : ''} Markdown allowed.`,
+    messages: [
+      { role: 'user', content: `${modeContext(settings, profile)}\n\nLive conversation so far (may be empty):\n${transcript || '(none)'}` },
+      { role: 'assistant', content: 'Understood. What do you need?' },
+      ...history,
+    ],
+    effort: 'low',
+    maxTokens: 3000,
     onText,
     signal,
   });

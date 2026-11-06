@@ -9692,6 +9692,7 @@ if (process.env.THINKING_MATRIX === '1') {
       }
     },
     requestStart: requestMeetingStart,
+    autoStart: () => SettingsManager.getInstance().get('meetingAutoStart') === true,
     notify: electronNotify,
   });
   registerMeetingDetection(meetingDetector, PhoneMirrorService.getInstance());

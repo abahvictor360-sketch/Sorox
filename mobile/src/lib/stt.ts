@@ -1,15 +1,26 @@
 // Soro X Mobile — live transcription from the microphone.
 //
 //   device   the phone's own speech recognition (Android / iOS), free, no key
-//   deepgram streaming over a WebSocket with the user's Deepgram key
-//   openai / groq   short recorded clips sent for transcription with the user's key
+//   whisper  Whisper running on the phone itself: offline after a one-time download
+//   deepgram streaming over a WebSocket with the user's Deepgram key; also tells
+//            speakers apart (diarization), so questions and answers are attributed
+//   openai / groq   each utterance (cut at natural pauses) sent for transcription
 import type { Settings } from './settings';
+import { VadRecorder, encodeWav } from './vad';
+import { loadWhisper, transcribeLocal } from './whisper';
+
+export interface FinalMeta {
+  /** Speaker number from diarization (Deepgram), when known. */
+  speaker?: number;
+}
 
 export interface TranscriptHandlers {
   /** Text heard so far in the current utterance (replaced on each call). */
   onInterim: (text: string) => void;
   /** A finished utterance. */
-  onFinal: (text: string) => void;
+  onFinal: (text: string, meta?: FinalMeta) => void;
+  /** 0..1 microphone level, for engines that measure it. */
+  onLevel?: (level: number) => void;
   onError: (message: string) => void;
   onState?: (listening: boolean) => void;
 }
@@ -24,6 +35,7 @@ export function createTranscriber(settings: Settings, h: TranscriptHandlers): Tr
     case 'deepgram': return new DeepgramTranscriber(settings, h);
     case 'openai': return new ClipTranscriber(settings, h, 'openai');
     case 'groq': return new ClipTranscriber(settings, h, 'groq');
+    case 'whisper': return new WhisperTranscriber(settings, h);
     default: return new DeviceTranscriber(settings, h);
   }
 }
@@ -32,6 +44,7 @@ export function sttNeedsKey(settings: Settings): string | null {
   if (settings.stt === 'deepgram' && !settings.keys.deepgram?.trim()) return 'Add your Deepgram key in Settings, or switch transcription to "Phone".';
   if (settings.stt === 'openai' && !settings.keys.openai?.trim()) return 'Add your OpenAI key in Settings, or switch transcription to "Phone".';
   if (settings.stt === 'groq' && !settings.keys.groq?.trim()) return 'Add your Groq key in Settings, or switch transcription to "Phone".';
+  if (settings.stt === 'whisper' && !settings.whisperModel) return 'Choose an offline voice model in Settings.';
   return null;
 }
 
@@ -49,6 +62,11 @@ function recorderMime(): string {
     if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported?.(m)) return m;
   }
   return '';
+}
+
+/** Whisper's well-known hallucinations on silence / noise. */
+export function isHallucination(text: string): boolean {
+  return /^(thank you\.?|thanks for watching[.!]?|you|\.+|bye\.?|\[.*\]|\(.*\)|♪.*)$/i.test(text.trim());
 }
 
 // ─── Phone speech recognition (Capacitor plugin) ───────────────────────────
@@ -122,6 +140,8 @@ class DeepgramTranscriber implements Transcriber {
   private rec: MediaRecorder | null = null;
   private stream: MediaStream | null = null;
   private utterance = '';
+  /** Words per speaker in the current utterance, to name its main speaker. */
+  private speakerWords = new Map<number, number>();
   constructor(private settings: Settings, private h: TranscriptHandlers) {}
 
   async start() {
@@ -130,7 +150,7 @@ class DeepgramTranscriber implements Transcriber {
     this.stream = await micStream();
     const params = new URLSearchParams({
       model: 'nova-3', language: this.settings.language, smart_format: 'true', punctuate: 'true',
-      interim_results: 'true', endpointing: '400', utterance_end_ms: '1200', vad_events: 'true',
+      interim_results: 'true', endpointing: '400', utterance_end_ms: '1200', vad_events: 'true', diarize: 'true',
     });
     const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ['token', key]);
     this.ws = ws;
@@ -141,6 +161,9 @@ class DeepgramTranscriber implements Transcriber {
       if (msg.type !== 'Results') return;
       const text: string = msg.channel?.alternatives?.[0]?.transcript ?? '';
       if (msg.is_final) {
+        for (const w of msg.channel?.alternatives?.[0]?.words ?? []) {
+          if (typeof w?.speaker === 'number') this.speakerWords.set(w.speaker, (this.speakerWords.get(w.speaker) ?? 0) + 1);
+        }
         if (text) this.utterance = `${this.utterance} ${text}`.trim();
         this.h.onInterim(this.utterance);
         if (msg.speech_final) this.flush();
@@ -164,8 +187,11 @@ class DeepgramTranscriber implements Transcriber {
   private flush() {
     const text = this.utterance.trim();
     this.utterance = '';
+    let speaker: number | undefined; let best = 0;
+    for (const [sp, n] of this.speakerWords) if (n > best) { best = n; speaker = sp; }
+    this.speakerWords.clear();
     this.h.onInterim('');
-    if (text) this.h.onFinal(text);
+    if (text) this.h.onFinal(text, { speaker });
   }
 
   async stop() {
@@ -180,47 +206,29 @@ class DeepgramTranscriber implements Transcriber {
   }
 }
 
-// ─── OpenAI / Groq: transcribe short clips ─────────────────────────────────
-
-const CLIP_MS = 6000;
+// ─── OpenAI / Groq: transcribe each utterance ──────────────────────────────
 
 class ClipTranscriber implements Transcriber {
   private stream: MediaStream | null = null;
-  private rec: MediaRecorder | null = null;
-  private running = false;
+  private vad: VadRecorder | null = null;
   constructor(private settings: Settings, private h: TranscriptHandlers, private provider: 'openai' | 'groq') {}
 
   async start() {
     this.stream = await micStream();
-    this.running = true;
+    this.vad = new VadRecorder({
+      onUtterance: (pcm) => void this.transcribe(encodeWav(pcm)),
+      onLevel: this.h.onLevel,
+      onSpeaking: (on) => this.h.onInterim(on ? '…' : ''),
+    });
+    await this.vad.start(this.stream);
     this.h.onState?.(true);
-    this.recordClip();
-  }
-
-  /** Each clip is its own complete file, so it can be sent on its own. */
-  private recordClip() {
-    if (!this.running || !this.stream) return;
-    const mimeType = recorderMime();
-    const rec = new MediaRecorder(this.stream, mimeType ? { mimeType } : undefined);
-    this.rec = rec;
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
-    rec.onstop = () => {
-      const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-      if (blob.size > 2000) void this.transcribe(blob);
-      this.recordClip();
-    };
-    rec.start();
-    this.h.onInterim('…listening');
-    setTimeout(() => { if (rec.state === 'recording') rec.stop(); }, CLIP_MS);
   }
 
   private async transcribe(blob: Blob) {
     const isOpenAi = this.provider === 'openai';
     const key = this.settings.keys[this.provider]?.trim();
     const form = new FormData();
-    const ext = blob.type.includes('mp4') ? 'm4a' : blob.type.includes('ogg') ? 'ogg' : 'webm';
-    form.append('file', blob, `clip.${ext}`);
+    form.append('file', blob, 'utterance.wav');
     form.append('model', isOpenAi ? 'gpt-4o-mini-transcribe' : 'whisper-large-v3-turbo');
     form.append('language', this.settings.language.split('-')[0]);
     try {
@@ -229,17 +237,61 @@ class ClipTranscriber implements Transcriber {
       });
       if (!res.ok) { this.h.onError(`${isOpenAi ? 'OpenAI' : 'Groq'} transcription failed (${res.status}).`); return; }
       const text = String((await res.json())?.text ?? '').trim();
-      if (text && !/^(thank you\.?|thanks for watching\.?|you)$/i.test(text)) this.h.onFinal(text);
+      if (text && !isHallucination(text)) this.h.onFinal(text);
     } catch {
-      this.h.onError('Could not reach the transcription service.');
+      this.h.onError('Could not reach the transcription service. No internet? Switch Listening to "Offline (Whisper)".');
     }
   }
 
   async stop() {
-    this.running = false;
-    try { if (this.rec?.state === 'recording') this.rec.stop(); } catch { /* ignore */ }
+    await this.vad?.stop();
+    this.vad = null;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.h.onInterim('');
+    this.h.onState?.(false);
+  }
+}
+
+// ─── Whisper on the phone (offline) ─────────────────────────────────────────
+
+class WhisperTranscriber implements Transcriber {
+  private stream: MediaStream | null = null;
+  private vad: VadRecorder | null = null;
+  private queue: Promise<void> = Promise.resolve();
+  private running = false;
+  constructor(private settings: Settings, private h: TranscriptHandlers) {}
+
+  async start() {
+    this.h.onInterim('Loading the offline voice model…');
+    await loadWhisper(this.settings.whisperModel, (l, t) => this.h.onInterim(t ? `Downloading the offline voice model… ${Math.round((l / t) * 100)}%` : 'Downloading the offline voice model…'));
+    this.h.onInterim('');
+    this.stream = await micStream();
+    this.running = true;
+    this.vad = new VadRecorder({
+      onUtterance: (pcm) => {
+        // One at a time, in order: transcription is slower than real time on some phones.
+        this.queue = this.queue.then(async () => {
+          if (!this.running && !pcm.length) return;
+          this.h.onInterim('…');
+          try {
+            const text = await transcribeLocal(pcm, this.settings.language);
+            if (text && !isHallucination(text)) this.h.onFinal(text);
+          } catch (e: any) {
+            this.h.onError(String(e?.message ?? e));
+          } finally { this.h.onInterim(''); }
+        });
+      },
+      onLevel: this.h.onLevel,
+    });
+    await this.vad.start(this.stream);
+    this.h.onState?.(true);
+  }
+
+  async stop() {
+    this.running = false;
+    await this.vad?.stop();
+    this.vad = null;
+    this.stream?.getTracks().forEach((t) => t.stop());
     this.h.onState?.(false);
   }
 }

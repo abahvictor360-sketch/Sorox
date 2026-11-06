@@ -236,6 +236,26 @@ export const CalendarSettings: React.FC = () => {
       .catch(() => setDetect(was));
   }, []);
 
+  // Soro X: start on its own when a call is detected (instead of asking). Off by default.
+  const [autoStart, setAutoStart] = useState<boolean | null>(null);
+  useEffect(() => {
+    let live = true;
+    window.electronAPI?.getMeetingAutoStart?.()
+      .then((on) => { if (live) setAutoStart(on === true); })
+      .catch(() => { if (live) setAutoStart(false); });
+    return () => { live = false; };
+  }, []);
+  const autoStartRef = useRef(autoStart);
+  autoStartRef.current = autoStart;
+  const toggleAutoStart = useCallback(() => {
+    const was = autoStartRef.current;
+    if (was === null) return;
+    setAutoStart(!was);
+    window.electronAPI?.setMeetingAutoStart?.(!was)
+      .then((r) => { if (!r?.success) setAutoStart(was); })
+      .catch(() => setAutoStart(was));
+  }, []);
+
   // Stealth-gated calendar polling: no calendar egress while undetectable
   const [isDetectable, setIsDetectable] = useState(true);
   useEffect(() => {
@@ -669,6 +689,24 @@ export const CalendarSettings: React.FC = () => {
             <p className="cp-desc" style={{ margin: 0 }}>
               {t('Offers to start Natively when a Zoom, Teams, Meet or Webex call begins.')}
             </p>
+            {detect && (
+              <div className="cp-card-header" style={{ marginTop: 10 }}>
+                <h4 className="cp-card-label">{t('Start automatically')}</h4>
+                <span className="ml-auto flex items-center">
+                  <SettingsToggle
+                    checked={!!autoStart}
+                    onChange={toggleAutoStart}
+                    label={t('Start automatically')}
+                    disabled={autoStart === null}
+                  />
+                </span>
+              </div>
+            )}
+            {detect && (
+              <p className="cp-desc" style={{ margin: 0 }}>
+                {t('Starts listening as soon as the call begins, so questions are answered from the first minute. Off: it asks first.')}
+              </p>
+            )}
           </div>
         </section>
 

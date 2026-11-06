@@ -45,6 +45,8 @@ export interface AppSettings {
     // microphone use) to link a session to its calendar event exactly and to
     // offer to start one. Local only. Unset = on.
     meetingDetectionEnabled?: boolean;
+    /** Soro X: start listening on its own when a call is detected (default off: ask first). */
+    meetingAutoStart?: boolean;
     // Direct Assist is the opt-in, single-provider answer path. It deliberately
     // bypasses meeting retrieval and the legacy answer-orchestration pipeline.
     // Keep the persisted default OFF during rollout; the operator kill switch

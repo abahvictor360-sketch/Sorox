@@ -1,7 +1,8 @@
 // Soro X Mobile — settings and keys, stored on this device only (WebView storage
 // is private to the app). Nothing is synced or sent anywhere.
-export type ProviderId = 'claude' | 'openai' | 'gemini' | 'groq';
-export type SttEngine = 'device' | 'deepgram' | 'openai' | 'groq';
+export type ProviderId = 'claude' | 'openai' | 'gemini' | 'groq' | 'openrouter' | 'nvidia';
+export type SttEngine = 'device' | 'whisper' | 'deepgram' | 'openai' | 'groq';
+export type ModeId = 'interview' | 'technical' | 'sales' | 'meeting' | 'lecture' | 'general';
 
 export interface Settings {
   provider: ProviderId;
@@ -14,6 +15,16 @@ export interface Settings {
   autoAnswer: boolean;
   /** Answer length: short spoken bullets, or a fuller script. */
   answerStyle: 'concise' | 'detailed';
+  /** On-device Whisper model (Listening → Offline). */
+  whisperModel: string;
+  /** What kind of conversation this is (like the desktop's Modes). */
+  mode: ModeId;
+  /** Extra instructions per mode, added to every answer. */
+  modeNotes: Partial<Record<ModeId, string>>;
+  /** Start listening as soon as the app opens. */
+  autoListen: boolean;
+  /** Keep the screen on while listening. */
+  keepAwake: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +35,11 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'en-US',
   autoAnswer: true,
   answerStyle: 'concise',
+  whisperModel: 'onnx-community/whisper-tiny.en',
+  mode: 'interview',
+  modeNotes: {},
+  autoListen: false,
+  keepAwake: true,
 };
 
 const KEY = 'sorox.mobile.settings.v1';
@@ -37,6 +53,7 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> = localStorage): 
       ...raw,
       keys: { ...(raw.keys ?? {}) },
       models: { ...(raw.models ?? {}) },
+      modeNotes: { ...(raw.modeNotes ?? {}) },
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
