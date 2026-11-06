@@ -21,7 +21,17 @@ The Soro X interview assistant for Android phones (and iPhone/iPad). It runs on
 - **Notes**: every session is saved with AI-written notes (summary, questions
   asked, action items, how it went), your own notes, the answers and the
   transcript; search, share or copy.
-- **Practice**: a mock interviewer; answer out loud, get a score and a better answer.
+- **Practice**: full **mock interviews** (the AI interviews you for your target
+  job one question at a time, follows up on thin answers, can read questions
+  aloud and research the company on the web first, then writes a scored report
+  saved to Notes), plus quick single-question practice with a score and a
+  better answer.
+- **Take note**: a Take note button on Live and in the glass view, and New note
+  in Notes for notes outside a session.
+- **Web search**: tap the globe in the Ask bar to answer from the web, with the
+  pages used listed as links. Uses your Tavily key (Me > Settings > Web search,
+  works with every AI), or Claude, Gemini or OpenRouter's own search. Prep's
+  company brief, negotiation and questions-to-ask use the web too.
 - **Prep**: pitch, likely questions, role fit, STAR stories, company brief,
   questions to ask, salary script, cover letter.
 - **Me**: Profile (CV + job), Schedule (interviews: at the start time a

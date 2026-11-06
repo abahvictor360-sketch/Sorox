@@ -31,13 +31,15 @@ export function iconize(text: string, key: string): ReactNode[] {
 
 function inline(text: string, key: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
+  const re = /(\[[^\]]+\]\(https?:\/\/[^\s)]+\)|\*\*[^*]+\*\*|`[^`]+`|\*[^*\s][^*]*\*|_[^_\s][^_]*_)/g;
   let last = 0; let m: RegExpExecArray | null; let i = 0;
   while ((m = re.exec(text))) {
     if (m.index > last) out.push(...iconize(text.slice(last, m.index), `${key}-t${i}`));
     const tok = m[0];
     const k = `${key}-${i++}`;
-    if (tok.startsWith('**')) out.push(<strong key={k}>{iconize(tok.slice(2, -2), k)}</strong>);
+    const link = /^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/.exec(tok);
+    if (link) out.push(<a key={k} href={link[2]} target="_blank" rel="noreferrer noopener" className="link">{link[1]}</a>);
+    else if (tok.startsWith('**')) out.push(<strong key={k}>{iconize(tok.slice(2, -2), k)}</strong>);
     else if (tok.startsWith('`')) out.push(<code key={k}>{tok.slice(1, -1)}</code>);
     else out.push(<em key={k}>{iconize(tok.slice(1, -1), k)}</em>);
     last = m.index + tok.length;

@@ -6,7 +6,8 @@ import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
 import { VoiceSetup } from '../components/VoiceSetup';
 import { ModeIcon } from '../components/ModeIcon';
-import { CircleCheck, ExternalLink } from 'lucide-react';
+import { CircleCheck, ExternalLink, Globe } from 'lucide-react';
+import { webModeLabel } from '../lib/web';
 import { Capacitor } from '@capacitor/core';
 import { BUILD_RUN, BUILD_TIME, DOWNLOAD_PAGE, checkForUpdate, type UpdateInfo } from '../lib/updates';
 
@@ -98,6 +99,15 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
       </div>
 
       <VoiceSetup settings={settings} />
+
+      <div className="card">
+        <h3><Globe size={16} aria-hidden /> Web search</h3>
+        <p className="muted small">Lets "Ask anything" (the globe button in Live), mock interviews and Prep (company brief, salary script, questions to ask) use current information from the web. {webModeLabel(settings)}</p>
+        <label>Tavily key (optional; works with every AI provider)
+          <input type="password" autoComplete="off" spellCheck={false} value={settings.keys.tavily ?? ''} placeholder="tvly-…" onChange={(e) => setKey('tavily', e.target.value)} />
+        </label>
+        <a href="https://app.tavily.com" target="_blank" rel="noreferrer" className="link">Get a free Tavily key <ExternalLink size={13} aria-hidden /></a>
+      </div>
 
       <div className="card">
         <h3>Answers</h3>

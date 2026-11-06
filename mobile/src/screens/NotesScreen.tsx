@@ -6,10 +6,10 @@ import type { Settings } from '../lib/settings';
 import { isReady } from '../lib/settings';
 import type { Profile } from '../lib/profile';
 import { MODES, writeNotes } from '../lib/interview';
-import { deleteSession, loadSessions, sessionToText, sessionTranscript, upsertSession, type Session } from '../lib/sessions';
+import { deleteSession, loadSessions, newSession, sessionToText, sessionTranscript, upsertSession, type Session } from '../lib/sessions';
 import { Markdown } from '../components/Markdown';
 import { ModeIcon } from '../components/ModeIcon';
-import { ArrowLeft, FileText, Share2, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Share2, Trash2 } from 'lucide-react';
 
 export function NotesScreen({ settings, profile, version }: { settings: Settings; profile: Profile; version: number }) {
   const [list, setList] = useState<Session[]>(() => loadSessions());
@@ -55,7 +55,12 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
           {(['notes', 'answers', 'transcript'] as const).map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t === 'notes' ? 'Notes' : t === 'answers' ? 'Answers' : 'Transcript'}</button>)}
         </div>
         {err && <p className="error">{err}</p>}
-        {tab === 'notes' && (
+        {tab === 'notes' && !open.lines.length && (
+          <div className="glass card">
+            <textarea className="note-editor" rows={14} autoFocus={!open.myNotes} value={open.myNotes} onChange={(e) => update({ ...open, myNotes: e.target.value })} placeholder="Write your note…" />
+          </div>
+        )}
+        {tab === 'notes' && open.lines.length > 0 && (
           <>
             <div className="glass card">
               <div className="row"><h3>AI notes</h3><span className="grow" />
@@ -85,7 +90,14 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
   const shown = q ? list.filter((s) => `${s.title} ${s.notes} ${s.myNotes} ${s.lines.map((l) => l.text).join(' ')}`.toLowerCase().includes(q)) : list;
   return (
     <section>
-      <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes and transcripts" />
+      <div className="row">
+        <input className="search grow" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes and transcripts" />
+        <button className="primary" onClick={() => {
+          const s = newSession(settings.mode, `Note · ${new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} ${new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`);
+          s.endedAt = Date.now();
+          setList(upsertSession(s)); setOpenId(s.id); setTab('notes');
+        }}><Plus size={16} aria-hidden /> New note</button>
+      </div>
       {!list.length && (
         <div className="glass card center">
           <div className="wicon"><FileText size={24} aria-hidden /></div>

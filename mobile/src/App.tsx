@@ -104,7 +104,7 @@ export default function App() {
             <LiveScreen ref={live} settings={settings} profile={profile} active={tab === 'live'} onSettings={setSettings} onSessionSaved={() => setNotesVersion((v) => v + 1)} />
           </div>
           {tab === 'notes' && <NotesScreen settings={settings} profile={profile} version={notesVersion} />}
-          {tab === 'practice' && <PracticeScreen settings={settings} profile={profile} />}
+          {tab === 'practice' && <PracticeScreen settings={settings} profile={profile} onSaved={() => setNotesVersion((v) => v + 1)} />}
           {tab === 'prep' && <PrepScreen settings={settings} profile={profile} />}
           {tab === 'me' && <MeScreen settings={settings} profile={profile} onSettings={setSettings} onProfile={setProfile} onStartNow={startLive} tab={meTab} onTab={setMeTab} />}
         </main>

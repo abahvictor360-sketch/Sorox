@@ -41,7 +41,9 @@ const KEY = 'sorox.mobile.profile.v1';
 export function loadProfile(storage: Pick<Storage, 'getItem'> = localStorage): Profile {
   try {
     const raw = JSON.parse(storage.getItem(KEY) || 'null');
-    return raw && typeof raw === 'object' ? { ...EMPTY_PROFILE, ...raw } : { ...EMPTY_PROFILE };
+    if (!raw || typeof raw !== 'object') return { ...EMPTY_PROFILE };
+    // Older or partial saves: fill in missing lists so prompts never break.
+    return { ...EMPTY_PROFILE, ...raw, resume: raw.resume ? normalizeResume(raw.resume) : null, job: raw.job ? normalizeJob(raw.job) : null };
   } catch {
     return { ...EMPTY_PROFILE };
   }

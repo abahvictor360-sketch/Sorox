@@ -16,10 +16,11 @@ import { fileToImagePart } from '../lib/image';
 import { newSession, upsertSession, sessionTranscript, type Session } from '../lib/sessions';
 import { keepAwake } from '../lib/schedule';
 import { warmUp, type ChatMessage } from '../lib/ai';
+import { webMode } from '../lib/web';
 import { sameQuestion } from '../lib/conversation';
 import { Markdown } from '../components/Markdown';
 import { ModeIcon } from '../components/ModeIcon';
-import { AArrowDown, AArrowUp, ArrowUp, AudioLines, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
+import { AArrowDown, AArrowUp, ArrowUp, AudioLines, Globe, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
 import { CoachCard } from '../components/CoachCard';
 
 type ItemKind = 'answer' | 'action' | 'image' | 'chat' | 'coach' | 'note';
@@ -64,6 +65,9 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   const [modePicker, setModePicker] = useState(false);
   const [noteDraft, setNoteDraft] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  // "Ask anything" can search the web (remembered).
+  const [webOn, setWebOn] = useState(() => { try { return localStorage.getItem('sorox.mobile.askWeb') === '1'; } catch { return false; } });
+  const setWebOnSaved = (on: boolean) => { setWebOn(on); try { localStorage.setItem('sorox.mobile.askWeb', on ? '1' : '0'); } catch { /* ignore */ } };
   // Glass view: big, translucent question + answer, for a tablet on a stand or split screen.
   const [glass, setGlass] = useState(() => { try { return localStorage.getItem('sorox.mobile.glass') === '1'; } catch { return false; } });
   const [glassIdx, setGlassIdx] = useState<number | null>(null);
@@ -307,10 +311,11 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
 
   const ask = (text: string) => {
     const q = text.trim(); if (!q) return;
-    const id = addItem({ kind: 'chat', prompt: q });
+    const id = addItem({ kind: 'chat', prompt: webOn && webMode(settingsRef.current) !== 'none' ? `${q}  (web search)` : q });
     const history = [...chatHistory.current, { role: 'user' as const, content: q }];
+    const web = webOn && webMode(settingsRef.current) !== 'none';
     void run(id, q, 'chat', async (on, sig) => {
-      const out = await chat(settingsRef.current, profileRef.current, history, conv.transcript(), on, sig);
+      const out = await chat(settingsRef.current, profileRef.current, history, conv.transcript(), on, sig, { web });
       chatHistory.current = [...history, { role: 'assistant' as const, content: out }].slice(-12);
       return out;
     });
@@ -390,7 +395,14 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
           </div>
         )}
         {lastLine && <div className="gv-ticker">{lastLine}</div>}
+        {noteDraft !== null && (
+          <form className="askbar" onSubmit={(e) => { e.preventDefault(); saveNote(noteDraft); setNoteDraft(null); }}>
+            <input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Write a note (saved to Notes)…" />
+            <button className="send" disabled={!noteDraft.trim()} aria-label="Save note"><Check size={18} aria-hidden /></button>
+          </form>
+        )}
         <div className="gv-controls">
+          <button className="pill" onClick={() => setNoteDraft(noteDraft === null ? '' : null)}><StickyNote size={14} aria-hidden /> Take note</button>
           <button className="pill" disabled={noKey} onClick={() => doAction('what_to_say')}>What should I say?</button>
           <button className="pill" disabled={noKey} onClick={() => doAction('shorten')}>Shorten</button>
           <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}><Camera size={15} aria-hidden /> Read screen</button>
@@ -411,6 +423,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         <span className="grow" />
         {mic.listening && <span className="meter" aria-hidden><i style={{ transform: `scaleX(${Math.max(0.06, mic.level)})` }} /></span>}
         {!mic.listening && <button className="pill ghosty" onClick={() => void start({ standby: true })} title="Listen quietly and turn on by itself at the first question">Standby</button>}
+        <button className="pill take-note" onClick={() => setNoteDraft(noteDraft === null ? '' : null)} title="Take a note (saved to Notes)"><StickyNote size={14} aria-hidden /> Take note</button>
         <button className="pill ghosty" onClick={() => setGlassMode(true)} title="Big translucent question and answer view">Glass</button>
         <button className="pill ghosty" onClick={() => void newConversation()} title="Start a new conversation">New</button>
         <button className={`mic ${mic.listening ? 'on' : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
@@ -511,7 +524,10 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
           </form>
         ) : (
           <form className="askbar" onSubmit={(e) => { e.preventDefault(); ask(typed); setTyped(''); }}>
-            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={noKey ? 'Add an AI key to ask' : 'Ask anything, or paste a question…'} disabled={noKey} />
+            <button type="button" className={`web-toggle ${webOn ? 'on' : ''}`} aria-label="Web search" aria-pressed={webOn} disabled={noKey}
+              title={webMode(settings) === 'none' ? 'Add a Tavily key in Settings to search the web' : webOn ? 'Web search on for questions you type' : 'Search the web for questions you type'}
+              onClick={() => setWebOnSaved(!webOn)}><Globe size={18} aria-hidden /></button>
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={noKey ? 'Add an AI key to ask' : webOn ? 'Ask anything, searched on the web…' : 'Ask anything, or paste a question…'} disabled={noKey} />
             <button className="send" disabled={!typed.trim() || noKey} aria-label="Send"><ArrowUp size={18} aria-hidden /></button>
           </form>
         )}

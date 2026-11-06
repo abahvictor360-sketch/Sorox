@@ -5,6 +5,7 @@ import { gradeAnswer, nextPracticeQuestion, type Feedback, type PracticeKind } f
 import { useTranscriber } from '../lib/useTranscriber';
 import { Markdown } from '../components/Markdown';
 import { Mic, Square } from 'lucide-react';
+import { MockInterview } from '../components/MockInterview';
 
 const KINDS: { id: PracticeKind; label: string }[] = [
   { id: 'mixed', label: 'Mixed' }, { id: 'behavioral', label: 'Behavioural' }, { id: 'technical', label: 'Technical' }, { id: 'role-fit', label: 'Role fit' },
@@ -12,7 +13,20 @@ const KINDS: { id: PracticeKind; label: string }[] = [
 
 interface Round { question: string; answer: string; feedback: Feedback }
 
-export function PracticeScreen({ settings, profile }: { settings: Settings; profile: Profile }) {
+export function PracticeScreen({ settings, profile, onSaved }: { settings: Settings; profile: Profile; onSaved?: () => void }) {
+  const [view, setView] = useState<'mock' | 'quick'>('mock');
+  return (
+    <section>
+      <div className="chips" role="tablist">
+        <button role="tab" aria-selected={view === 'mock'} className={view === 'mock' ? 'chip on' : 'chip'} onClick={() => setView('mock')}>Mock interview</button>
+        <button role="tab" aria-selected={view === 'quick'} className={view === 'quick' ? 'chip on' : 'chip'} onClick={() => setView('quick')}>Quick practice</button>
+      </div>
+      {view === 'mock' ? <MockInterview settings={settings} profile={profile} onSaved={onSaved} /> : <QuickPractice settings={settings} profile={profile} />}
+    </section>
+  );
+}
+
+function QuickPractice({ settings, profile }: { settings: Settings; profile: Profile }) {
   const [kind, setKind] = useState<PracticeKind>('mixed');
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');

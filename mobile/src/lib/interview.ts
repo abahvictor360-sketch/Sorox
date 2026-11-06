@@ -1,7 +1,8 @@
 // Soro X Mobile: interview logic: spotting questions in a transcript, and the
 // prompts behind live answers, practice feedback and preparation documents.
 // Every prompt is grounded in the user's own CV and target job (profile.ts).
-import { complete, completeJson, type ChatMessage, type Effort, type ImagePart } from './ai';
+import { complete, completeJson, type ChatMessage, type CompleteRequest, type Effort, type ImagePart } from './ai';
+import { completeWithWeb, webMode } from './web';
 import { hasProfile, profileContext, type Profile } from './profile';
 import type { ModeId, Settings } from './settings';
 
@@ -204,21 +205,24 @@ Write the notes with these sections (skip any that would be empty):
 
 export async function chat(
   settings: Settings, profile: Profile, history: ChatMessage[], transcript: string,
-  onText: (delta: string, full: string) => void, signal?: AbortSignal,
+  onText: (delta: string, full: string) => void, signal?: AbortSignal, opts: { web?: boolean } = {},
 ): Promise<string> {
-  return complete(settings, {
+  const req: CompleteRequest = {
     system: `You are Soro X, an assistant helping ${modeOf(settings).role}. Be concise and practical. ${modeOf(settings).usesProfile ? 'Ground anything about the user in their profile; never invent experience.' : ''} Markdown allowed.`,
     messages: [
-      { role: 'user', content: `${modeContext(settings, profile)}\n\nLive conversation so far (may be empty):\n${transcript || '(none)'}` },
-      { role: 'assistant', content: 'Understood. What do you need?' },
+      { role: 'user' as const, content: `${modeContext(settings, profile)}\n\nLive conversation so far (may be empty):\n${transcript || '(none)'}` },
+      { role: 'assistant' as const, content: 'Understood. What do you need?' },
       ...history,
     ],
-    effort: 'low',
+    effort: 'low' as const,
     maxTokens: 2000,
     fast: true,
     onText,
     signal,
-  });
+  };
+  // Search the web for this question when asked (and a search route exists).
+  if (opts.web && webMode(settings) !== 'none') return (await completeWithWeb(settings, req, history[history.length - 1]?.content)).text;
+  return complete(settings, req);
 }
 
 // ─── Practice (mock interview) ──────────────────────────────────────────────
@@ -270,6 +274,13 @@ Return {"score": 1-10, "verdict": "one sentence", "strengths": [""], "improvemen
 
 // ─── Preparation documents ──────────────────────────────────────────────────
 
+/** What to search for, per preparation document (only when the job names a company). */
+const WEB_QUERIES: Partial<Record<string, (company: string, title: string, location: string) => string>> = {
+  company: (c) => `${c} company news strategy culture interview process`,
+  negotiation: (c, t, l) => `${t} salary range ${c} ${l}`.trim(),
+  ask: (c) => `${c} recent news priorities`,
+};
+
 export type PrepKind = 'pitch' | 'questions' | 'fit' | 'company' | 'stories' | 'ask' | 'negotiation' | 'cover';
 
 export const PREP_KINDS: { id: PrepKind; title: string; blurb: string; effort: Effort; needsJob?: boolean }[] = [
@@ -288,7 +299,7 @@ const PREP_PROMPTS: Record<PrepKind, string> = {
   questions: 'List the 10 questions this candidate is most likely to be asked for this job (mix of behavioural, technical/role and motivation). For each: the question in bold, why they will ask it, and a 3-bullet answer outline from the candidate\'s real experience.',
   fit: 'Go through every requirement of the target job. For each give a status (Strong / Partial / Gap), the CV evidence, and how to address it in the interview. End with an overall fit score out of 100 and the 3 things to emphasise.',
   stories: 'Turn the candidate\'s 5 strongest experiences into STAR stories (Situation, Task, Action, Result) of 4–6 sentences each, with numbers only where the CV gives them. Label each with the competencies it proves (leadership, conflict, failure, impact…).',
-  company: 'Write a pre-interview brief on the target company: what it does, business model, products, culture and values, recent strategy, competitors, and what interviews there tend to focus on. Say clearly which points the candidate should verify against recent news, since your knowledge may be dated. End with 3 ways to connect their background to the company.',
+  company: 'Write a pre-interview brief on the target company: what it does, business model, products, culture and values, recent strategy, competitors, and what interviews there tend to focus on. When web results are provided, use them and cite them; otherwise say clearly which points the candidate should verify against recent news. End with 3 ways to connect their background to the company.',
   ask: 'Suggest 8 specific, thoughtful questions the candidate can ask the interviewers, grouped by audience (hiring manager, team, HR), each with one line on why it lands well.',
   negotiation: 'Prepare a salary negotiation plan: a target range (use the job\'s stated salary if any, otherwise a reasonable market estimate and say it is an estimate), an opening script, replies for "what is your current salary?", "this is our best offer", and "the budget is fixed", the candidate\'s leverage points from their CV, and a walk-away point. Short, polite, ready to say aloud.',
   cover: 'Write a cover letter (250–350 words) in the first person, tying 2–3 concrete experiences to the job\'s main requirements. No clichés. Sign with the candidate\'s name.',
@@ -298,12 +309,17 @@ export async function generatePrep(
   settings: Settings, profile: Profile, kind: PrepKind, onText: (delta: string, full: string) => void, signal?: AbortSignal,
 ): Promise<string> {
   const spec = PREP_KINDS.find((k) => k.id === kind)!;
-  return complete(settings, {
+  const req = {
     system: 'You are an expert career coach preparing a candidate for a job interview. Use only facts from the candidate\'s profile; never invent experience, employers or numbers. Write in clear markdown (headings, bold, bullets).',
-    messages: [{ role: 'user', content: `${profileContext(profile)}\n\nTask: ${PREP_PROMPTS[kind]}` }],
+    messages: [{ role: 'user' as const, content: `${profileContext(profile)}\n\nTask: ${PREP_PROMPTS[kind]}` }],
     effort: spec.effort,
     maxTokens: 8000,
     onText,
     signal,
-  });
+  };
+  // Company facts, salary ranges and good questions to ask benefit from the web.
+  const company = profile.job?.company?.trim();
+  const query = WEB_QUERIES[kind]?.(company ?? '', profile.job?.title ?? '', profile.job?.location ?? '');
+  if (query && company && webMode(settings) !== 'none') return (await completeWithWeb(settings, req, query)).text;
+  return complete(settings, req);
 }

@@ -18,4 +18,10 @@ describe('AI text shows icons, not emoji', () => {
     const html = renderToStaticMarkup(<Markdown text={'**I led the migration.** Costs fell 20% (£80k).'} />);
     expect(html).toContain('<strong>I led the migration.</strong> Costs fell 20% (£80k).');
   });
+  it('renders web source links, and only http(s) ones', () => {
+    const html = renderToStaticMarkup(<Markdown text={'#### Sources\n1. [Acme news](https://acme.com/n)\n2. [bad](javascript:alert(1))'} />);
+    expect(html).toContain('href="https://acme.com/n"');
+    expect(html).toContain('target="_blank"');
+    expect(html).not.toContain('href="javascript:');
+  });
 });

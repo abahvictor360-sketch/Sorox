@@ -33,6 +33,24 @@ export interface CompleteRequest {
   fast?: boolean;
   /** The system prompt repeats across requests: let the provider cache it. */
   cache?: boolean;
+  /** Let the provider search the web itself (Claude, Gemini, OpenRouter; see nativeWebSearch). */
+  web?: boolean;
+  /** Pages the answer drew on, when the provider reports them. */
+  onSources?: (sources: Source[]) => void;
+}
+
+export interface Source { title: string; url: string }
+
+/** Providers that can search the web on their own, with the user's key. */
+export function nativeWebSearch(provider: ProviderId): boolean {
+  return provider === 'claude' || provider === 'gemini' || provider === 'openrouter';
+}
+
+/** Claude models with the newer web search tool (dynamic filtering); others use the basic one. */
+const CLAUDE_WEB_2026 = /^claude-(opus-(5-5|5|4-8|4-7|4-6)|sonnet-(5-5|5|4-6)|fable-|mythos-)/;
+
+function addSources(list: Source[], more: Source[]) {
+  for (const s of more) if (s.url && !list.some((x) => x.url === s.url)) list.push({ title: s.title || s.url, url: s.url });
 }
 
 export class AiError extends Error {
@@ -126,7 +144,22 @@ async function streamClaude(key: string, model: string, req: CompleteRequest, em
   // The key is the user's own and never leaves this device except to Anthropic.
   const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 1 });
   const useFallback = CLAUDE_FALLBACK_MODELS.has(model);
+  const sources: Source[] = [];
+  const webTool = req.web
+    ? [{ type: (CLAUDE_WEB_2026.test(model) ? 'web_search_20260209' : 'web_search_20250305') as 'web_search_20260209', name: 'web_search' as const, max_uses: 4 }]
+    : undefined;
+  let messages: any[] = req.messages.map((m) => ({
+    role: m.role,
+    content: m.images?.length
+      ? [
+          ...m.images.map((img) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mime as 'image/jpeg', data: img.data } })),
+          { type: 'text' as const, text: m.content },
+        ]
+      : m.content,
+  }));
   try {
+   // A long web search can pause the turn (pause_turn); send the turn back to let it finish.
+   for (let round = 0; round < 3; round++) {
     const stream = client.beta.messages.stream({
       model,
       max_tokens: req.maxTokens ?? 16000,
@@ -134,25 +167,33 @@ async function streamClaude(key: string, model: string, req: CompleteRequest, em
       system: req.cache ? [{ type: 'text' as const, text: req.system, cache_control: { type: 'ephemeral' as const } }] : req.system,
       // Fast answers on Haiku: no thinking step, straight to the answer.
       ...(req.fast && /^claude-haiku-5/.test(model) ? { thinking: { type: 'disabled' as const } } : {}),
-      messages: req.messages.map((m) => ({
-        role: m.role,
-        content: m.images?.length
-          ? [
-              ...m.images.map((img) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mime as 'image/jpeg', data: img.data } })),
-              { type: 'text' as const, text: m.content },
-            ]
-          : m.content,
-      })),
+      messages,
+      ...(webTool ? { tools: webTool } : {}),
       output_config: { effort: req.effort ?? 'medium' },
       ...(useFallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
     }, { signal: req.signal });
     for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') emit(event.delta.text);
+      if (event.type !== 'content_block_delta') continue;
+      if (event.delta.type === 'text_delta') emit(event.delta.text);
+      else if (event.delta.type === 'citations_delta') {
+        const c: any = (event.delta as any).citation;
+        if (c?.url) addSources(sources, [{ title: c.title ?? '', url: c.url }]);
+      }
     }
     const final = await stream.finalMessage();
     if (final.stop_reason === 'refusal') {
       throw new AiError('Claude declined this request. Try rephrasing it or switch provider in Settings.', 'claude');
     }
+    // Search results Claude read, when it did not cite them inline.
+    for (const block of final.content as any[]) {
+      if (block.type === 'web_search_tool_result' && Array.isArray(block.content)) {
+        if (!sources.length) addSources(sources, block.content.slice(0, 5).map((r: any) => ({ title: r.title ?? '', url: r.url ?? '' })));
+      }
+    }
+    if (final.stop_reason !== 'pause_turn') break;
+    messages = [...messages, { role: 'assistant', content: final.content }];
+   }
+   if (sources.length) req.onSources?.(sources);
   } catch (e: any) {
     if (e instanceof AiError || e?.name === 'AbortError') throw e;
     if (e instanceof Anthropic.AuthenticationError) throw new AiError('Your Claude key was rejected. Check it in Settings.', 'claude', 401);
@@ -188,6 +229,8 @@ async function streamOpenAiCompatible(
     // gpt-oss models reason first; keep that short for live answers.
     if (req.fast && /gpt-oss/.test(model)) body.reasoning_effort = 'low';
   }
+  // OpenRouter's own web search, with the user's OpenRouter key.
+  if (req.web && provider === 'openrouter') body.plugins = [{ id: 'web', max_results: 5 }];
   const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
   if (provider === 'openrouter') { headers['HTTP-Referer'] = 'https://sorox-three.vercel.app'; headers['X-Title'] = 'Soro X'; }
   let res: Response;
@@ -201,10 +244,13 @@ async function streamOpenAiCompatible(
     throw new AiError(`Could not reach ${PROVIDERS[provider].label}.${provider === 'nvidia' ? ' NVIDIA only works in the installed app.' : ''}`, provider);
   }
   if (!res.ok) throw new AiError(await httpErrorMessage(res, provider, model), provider, res.status);
+  const orSources: Source[] = [];
   await readSse(res, (data) => {
     if (data === '[DONE]') return;
     const json = safeJson(data);
     emit(json?.choices?.[0]?.delta?.content ?? '');
+    const ann = json?.choices?.[0]?.delta?.annotations;
+    if (Array.isArray(ann)) addSources(orSources, ann.filter((x: any) => x?.type === 'url_citation').map((x: any) => ({ title: x.url_citation?.title ?? '', url: x.url_citation?.url ?? '' })));
   });
 }
 
@@ -236,15 +282,21 @@ async function streamGemini(key: string, model: string, req: CompleteRequest, em
         parts: [...(m.images ?? []).map((img) => ({ inlineData: { mimeType: img.mime, data: img.data } })), { text: m.content }],
       })),
       generationConfig: { maxOutputTokens: req.maxTokens ?? 16000 },
+      // Gemini's own Google Search grounding.
+      ...(req.web ? { tools: [{ google_search: {} }] } : {}),
     }),
     signal: req.signal,
   }).catch((e) => { throw e?.name === 'AbortError' ? e : new AiError('Could not reach Gemini.', 'gemini'); });
   if (!res.ok) throw new AiError(await httpErrorMessage(res, 'gemini', model), 'gemini', res.status);
+  const sources: Source[] = [];
   await readSse(res, (data) => {
     const json = safeJson(data);
     const parts = json?.candidates?.[0]?.content?.parts ?? [];
     emit(parts.map((p: any) => (typeof p?.text === 'string' && !p.thought ? p.text : '')).join(''));
+    const chunks = json?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+    addSources(sources, chunks.map((c: any) => ({ title: c?.web?.title ?? '', url: c?.web?.uri ?? '' })));
   });
+  if (sources.length) req.onSources?.(sources);
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
