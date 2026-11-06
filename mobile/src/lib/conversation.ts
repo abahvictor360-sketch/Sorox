@@ -47,6 +47,21 @@ export function firstPersonRatio(text: string): number {
 
 const words = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
 
+const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9\s']/g, ' ').split(/\s+/).filter(Boolean);
+
+/**
+ * Is the final transcript the same question the live caption was answered
+ * from? True when most of the caption's words are in it and it did not go on
+ * much longer (a longer final means the question continued: answer it again).
+ */
+export function sameQuestion(caption: string, final: string): boolean {
+  const a = norm(caption); const b = norm(final);
+  if (!a.length || !b.length) return false;
+  const inB = new Set(b);
+  const overlap = a.filter((w) => inB.has(w)).length / a.length;
+  return overlap >= 0.75 && b.length <= Math.ceil(a.length * 1.35) + 2;
+}
+
 export class Conversation {
   segments: Segment[] = [];
   private speakerRole = new Map<number, Role>();

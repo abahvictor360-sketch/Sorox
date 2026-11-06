@@ -80,19 +80,25 @@ export async function answerQuestion(
   onText: (delta: string, full: string) => void, signal?: AbortSignal, opts: { allowSkip?: boolean } = {},
 ): Promise<string> {
   const ctx = modeContext(settings, profile);
-  const content = `${ctx || (modeOf(settings).usesProfile ? '(No CV added yet. Answer generally and remind them to add their CV in Profile.)' : '')}
+  // Instructions and profile stay the same all interview: they go in the
+  // (cached) system prompt; only the conversation changes per answer.
+  const system = `${ANSWER_SYSTEM(settings, opts.allowSkip !== false)}
 
-Conversation so far:
+${ctx || (modeOf(settings).usesProfile ? '(No CV added yet. Answer generally and remind them to add their CV in Profile.)' : '')}`;
+  const content = `Conversation so far:
 ${context || '(none)'}
 
 Latest line${opts.allowSkip === false ? ' (the candidate asked for help with this, so do not skip)' : ''}: "${question}"`;
   // Hold back the first characters until we know the reply is not a skip.
   let shown = false;
   const out = await complete(settings, {
-    system: ANSWER_SYSTEM(settings, opts.allowSkip !== false),
+    system,
     messages: [{ role: 'user', content }],
     effort: 'low',
-    maxTokens: 2000,
+    // Short answers arrive sooner; the format asks for under 120 / 250 words anyway.
+    maxTokens: settings.answerStyle === 'concise' ? 700 : 1200,
+    fast: true,
+    cache: true,
     onText: (d, full) => {
       if (!shown) {
         const t = full.trimStart();
@@ -145,7 +151,8 @@ ${lastAnswer || '(none)'}
 
 Task: ${QUICK_PROMPTS[action]}` }],
     effort: 'low',
-    maxTokens: 1500,
+    maxTokens: 1200,
+    fast: true,
     onText,
     signal,
   });
@@ -207,7 +214,8 @@ export async function chat(
       ...history,
     ],
     effort: 'low',
-    maxTokens: 3000,
+    maxTokens: 2000,
+    fast: true,
     onText,
     signal,
   });

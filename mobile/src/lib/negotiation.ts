@@ -33,7 +33,8 @@ ${transcript}
 
 Their latest line: "${line}"` }],
     effort: 'low',
-    maxTokens: 1200,
+    maxTokens: 900,
+    fast: true,
   });
   const tacticalNote = String(raw?.tacticalNote ?? '').trim();
   const exactScript = String(raw?.exactScript ?? '').trim();

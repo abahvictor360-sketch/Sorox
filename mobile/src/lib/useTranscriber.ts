@@ -35,5 +35,12 @@ export function useTranscriber(settings: Settings, onFinal: (text: string, meta?
   }, [settings, stop]);
 
   useEffect(() => () => { void ref.current?.stop(); }, []);
+  // Automated UI tests set the live caption here (only when a test page sets the flag).
+  useEffect(() => {
+    const w = window as any;
+    if (!w.__SOROX_TEST__) return;
+    w.__soroxInterim = setInterim;
+    return () => { delete w.__soroxInterim; };
+  }, []);
   return { listening, interim, error, level, start, stop, setError };
 }

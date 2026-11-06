@@ -29,6 +29,10 @@ export interface CompleteRequest {
   /** Called with each new piece of text as it streams in. */
   onText?: (delta: string, full: string) => void;
   signal?: AbortSignal;
+  /** Live answers: use the provider's fast model (Settings → Fast answers). */
+  fast?: boolean;
+  /** The system prompt repeats across requests: let the provider cache it. */
+  cache?: boolean;
 }
 
 export class AiError extends Error {
@@ -38,29 +42,29 @@ export class AiError extends Error {
   }
 }
 
-export const PROVIDERS: Record<ProviderId, { label: string; defaultModel: string; keyUrl: string; keyHint: string; models: string[] }> = {
+export const PROVIDERS: Record<ProviderId, { label: string; defaultModel: string; fastModel: string; keyUrl: string; keyHint: string; models: string[] }> = {
   claude: {
-    label: 'Claude (Anthropic)', defaultModel: 'claude-opus-5-5', keyUrl: 'https://console.anthropic.com/settings/keys', keyHint: 'sk-ant-…',
+    label: 'Claude (Anthropic)', defaultModel: 'claude-opus-5-5', fastModel: 'claude-haiku-5-5', keyUrl: 'https://console.anthropic.com/settings/keys', keyHint: 'sk-ant-…',
     models: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5'],
   },
   openai: {
-    label: 'OpenAI', defaultModel: 'gpt-5.4', keyUrl: 'https://platform.openai.com/api-keys', keyHint: 'sk-…',
+    label: 'OpenAI', defaultModel: 'gpt-5.4', fastModel: 'gpt-5.4-mini', keyUrl: 'https://platform.openai.com/api-keys', keyHint: 'sk-…',
     models: ['gpt-5.4', 'gpt-5.4-mini', 'gpt-5.5'],
   },
   gemini: {
-    label: 'Google Gemini', defaultModel: 'gemini-3.8-flash', keyUrl: 'https://aistudio.google.com/app/apikey', keyHint: 'AIza…',
+    label: 'Google Gemini', defaultModel: 'gemini-3.8-flash', fastModel: 'gemini-3.1-flash-lite', keyUrl: 'https://aistudio.google.com/app/apikey', keyHint: 'AIza…',
     models: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3.1-flash-lite'],
   },
   groq: {
-    label: 'Groq', defaultModel: 'openai/gpt-oss-120b', keyUrl: 'https://console.groq.com/keys', keyHint: 'gsk_…',
+    label: 'Groq', defaultModel: 'openai/gpt-oss-120b', fastModel: 'openai/gpt-oss-120b', keyUrl: 'https://console.groq.com/keys', keyHint: 'gsk_…',
     models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'moonshotai/kimi-k2-instruct-0905', 'meta-llama/llama-4-maverick-17b-128e-instruct'],
   },
   openrouter: {
-    label: 'OpenRouter', defaultModel: 'google/gemini-3.1-flash-lite', keyUrl: 'https://openrouter.ai/settings/keys', keyHint: 'sk-or-…',
+    label: 'OpenRouter', defaultModel: 'google/gemini-3.1-flash-lite', fastModel: 'google/gemini-3.1-flash-lite', keyUrl: 'https://openrouter.ai/settings/keys', keyHint: 'sk-or-…',
     models: ['google/gemini-3.1-flash-lite', 'openai/gpt-oss-120b', 'anthropic/claude-sonnet-4.5', 'deepseek/deepseek-chat-v3.1', 'meta-llama/llama-3.3-70b-instruct:free'],
   },
   nvidia: {
-    label: 'NVIDIA', defaultModel: 'openai/gpt-oss-120b', keyUrl: 'https://build.nvidia.com/settings/api-keys', keyHint: 'nvapi-…',
+    label: 'NVIDIA', defaultModel: 'openai/gpt-oss-120b', fastModel: 'openai/gpt-oss-20b', keyUrl: 'https://build.nvidia.com/settings/api-keys', keyHint: 'nvapi-…',
     models: ['openai/gpt-oss-120b', 'meta/llama-3.3-70b-instruct', 'deepseek-ai/deepseek-v3.1', 'meta/llama-4-maverick-17b-128e-instruct'],
   },
 };
@@ -79,12 +83,33 @@ export function modelFor(settings: Settings, provider: ProviderId = settings.pro
   return settings.models[provider]?.trim() || PROVIDERS[provider].defaultModel;
 }
 
+/** The model for live answers: the fast one when Fast answers is on. */
+export function liveModelFor(settings: Settings, provider: ProviderId = settings.provider): string {
+  if (settings.fastAnswers === false) return modelFor(settings, provider);
+  return settings.fastModels?.[provider]?.trim() || PROVIDERS[provider].fastModel;
+}
+
+const ORIGINS: Record<ProviderId, string> = {
+  claude: 'https://api.anthropic.com', openai: 'https://api.openai.com', gemini: 'https://generativelanguage.googleapis.com',
+  groq: 'https://api.groq.com', openrouter: 'https://openrouter.ai', nvidia: 'https://integrate.api.nvidia.com',
+};
+let warmedAt = 0;
+/**
+ * Open the connection to the AI provider ahead of the first question (DNS,
+ * TLS), so the first answer does not pay for it. Cheap, and at most once a minute.
+ */
+export function warmUp(settings: Settings) {
+  if (Date.now() - warmedAt < 60_000 || !settings.keys[settings.provider]?.trim()) return;
+  warmedAt = Date.now();
+  void fetch(ORIGINS[settings.provider], { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+}
+
 /** Stream a reply from the configured provider; resolves with the full text. */
 export async function complete(settings: Settings, req: CompleteRequest): Promise<string> {
   const provider = settings.provider;
   const key = settings.keys[provider]?.trim();
   if (!key) throw new AiError(`Add your ${PROVIDERS[provider].label} key in Settings first.`, provider);
-  const model = modelFor(settings, provider);
+  const model = req.fast ? liveModelFor(settings, provider) : modelFor(settings, provider);
   // House style for everything the AI writes in the app.
   req = { ...req, system: `${req.system}\n\nWriting style: never use em dashes (—). Use commas, colons, brackets or full stops instead.` };
   let full = '';
@@ -105,7 +130,10 @@ async function streamClaude(key: string, model: string, req: CompleteRequest, em
     const stream = client.beta.messages.stream({
       model,
       max_tokens: req.maxTokens ?? 16000,
-      system: req.system,
+      // A cached system prompt (instructions + profile) is not re-read on every answer.
+      system: req.cache ? [{ type: 'text' as const, text: req.system, cache_control: { type: 'ephemeral' as const } }] : req.system,
+      // Fast answers on Haiku: no thinking step, straight to the answer.
+      ...(req.fast && /^claude-haiku-5/.test(model) ? { thinking: { type: 'disabled' as const } } : {}),
       messages: req.messages.map((m) => ({
         role: m.role,
         content: m.images?.length
@@ -157,6 +185,8 @@ async function streamOpenAiCompatible(
     if (/^(gpt-5|o\d)/i.test(model)) body.reasoning_effort = req.effort === 'high' ? 'medium' : 'low';
   } else {
     body.max_tokens = Math.min(req.maxTokens ?? 8000, 8000);
+    // gpt-oss models reason first; keep that short for live answers.
+    if (req.fast && /gpt-oss/.test(model)) body.reasoning_effort = 'low';
   }
   const headers: Record<string, string> = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
   if (provider === 'openrouter') { headers['HTTP-Referer'] = 'https://sorox-three.vercel.app'; headers['X-Title'] = 'Soro X'; }

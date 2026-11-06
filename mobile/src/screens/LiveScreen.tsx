@@ -14,7 +14,8 @@ import { useTranscriber } from '../lib/useTranscriber';
 import { fileToImagePart } from '../lib/image';
 import { newSession, upsertSession, sessionTranscript, type Session } from '../lib/sessions';
 import { keepAwake } from '../lib/schedule';
-import type { ChatMessage } from '../lib/ai';
+import { warmUp, type ChatMessage } from '../lib/ai';
+import { sameQuestion } from '../lib/conversation';
 import { Markdown } from '../components/Markdown';
 import { ModeIcon } from '../components/ModeIcon';
 import { ArrowUp, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
@@ -149,19 +150,27 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   }, [conv, tracker, answer]);
 
   // ── Transcript in ──
+  // Early answers: started from the live caption before the final transcript.
+  const early = useRef<{ text: string; at: number } | null>(null);
+
   const process = useCallback((text: string, speaker?: number, at = Date.now()) => {
     const seg = conv.add(text, at, speaker);
+    // Already being answered from the live caption: do not answer it twice.
+    const e = early.current;
+    const earlyCovered = !!e && at - e.at < 20_000 && sameQuestion(e.text, seg.text);
+    if (earlyCovered) { conv.markAnswered([seg.id]); early.current = null; }
     setSegments([...conv.segments]);
     const s = ensureSession();
     s.lines.push({ text: seg.text, role: seg.role, at: seg.at });
     if (s.lines.length % 5 === 0) saveSession();
     if (seg.role !== 'you') tracker.feed(seg.text);
     const st = settingsRef.current;
-    const trigger = seg.role !== 'you' && (seg.question || (tracker.isActive() && !!detectPhase(seg.text)));
+    const trigger = !earlyCovered && seg.role !== 'you' && (seg.question || (tracker.isActive() && !!detectPhase(seg.text)));
     if (st.autoAnswer && isReady(st) && trigger) {
-      // Wait a moment: the question may continue in the next utterance.
+      // A question that clearly ended ("…?") is answered at once; otherwise
+      // wait a moment in case it continues in the next utterance.
       if (debounce.current) window.clearTimeout(debounce.current);
-      debounce.current = window.setTimeout(() => { debounce.current = null; answerPending(); }, 900);
+      debounce.current = window.setTimeout(() => { debounce.current = null; answerPending(); }, /\?\s*$/.test(seg.text) ? 150 : 600);
     }
   }, [conv, tracker, ensureSession, saveSession, answerPending]);
 
@@ -186,6 +195,23 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
 
   const mic = useTranscriber(settings, onFinal);
 
+  // Answer from the live caption as soon as a question is complete: when it
+  // ends with "?" (Deepgram punctuates), or when the speaker has paused on a
+  // question for a moment, without waiting for the final transcript.
+  useEffect(() => {
+    const t = mic.interim.trim();
+    const st = settingsRef.current;
+    if (!t || t === '…' || standbyRef.current || !st.autoAnswer || !isReady(st)) return;
+    if (!looksLikeQuestion(t) || firstPersonRatio(t) >= 0.15) return;
+    const wait = /\?\s*$/.test(t) ? 200 : 700;
+    const id = window.setTimeout(() => {
+      if (early.current && Date.now() - early.current.at < 20_000 && sameQuestion(early.current.text, t)) return;
+      early.current = { text: t, at: Date.now() };
+      answer(t, conv.transcript(), { auto: true });
+    }, wait);
+    return () => window.clearTimeout(id);
+  }, [mic.interim, answer, conv]);
+
   // Automated UI tests feed speech here (only when a test page sets the flag).
   useEffect(() => {
     const w = window as any;
@@ -199,6 +225,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   const start = useCallback(async (opts: { standby?: boolean } = {}) => {
     standbyRef.current = !!opts.standby; setStandby(!!opts.standby); standbyBuf.current = [];
     if (!opts.standby) ensureSession();
+    warmUp(settingsRef.current);
     await mic.start();
     if (settingsRef.current.keepAwake) void keepAwake(true);
   }, [mic, ensureSession]);

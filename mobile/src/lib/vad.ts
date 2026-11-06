@@ -62,7 +62,7 @@ export class Segmenter {
   private preroll: Float32Array[] = [];
 
   constructor(private readonly rate: number, private readonly h: VadHandlers, opts: VadOptions = {}) {
-    this.pauseMs = opts.pauseMs ?? 800;
+    this.pauseMs = opts.pauseMs ?? 650;
     this.maxMs = opts.maxMs ?? 20_000;
     this.minSpeechMs = opts.minSpeechMs ?? 300;
   }

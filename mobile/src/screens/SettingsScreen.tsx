@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ProviderId, Settings, SttEngine } from '../lib/settings';
-import { PROVIDERS, complete, modelFor } from '../lib/ai';
+import { PROVIDERS, complete, liveModelFor, modelFor } from '../lib/ai';
 import { MODES } from '../lib/interview';
 import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
@@ -95,6 +95,15 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
 
       <div className="card">
         <h3>Answers</h3>
+        <label className="toggle"><input type="checkbox" checked={settings.fastAnswers} onChange={(e) => set({ fastAnswers: e.target.checked })} /> <span>Fast answers<br /><small>Live answers, quick actions and the coach use a quicker model. Prep, Practice grading and notes keep {modelFor(settings)}.</small></span></label>
+        {settings.fastAnswers && (
+          <label>Fast model for {PROVIDERS[p].label}
+            <input list={`fast-${p}`} value={settings.fastModels[p] ?? ''} placeholder={PROVIDERS[p].fastModel} spellCheck={false} autoCapitalize="off"
+              onChange={(e) => onChange({ ...settings, fastModels: { ...settings.fastModels, [p]: e.target.value } })} />
+            <datalist id={`fast-${p}`}>{[PROVIDERS[p].fastModel, ...PROVIDERS[p].models].map((m) => <option key={m} value={m} />)}</datalist>
+            <small className="muted">Now using {liveModelFor(settings)}.</small>
+          </label>
+        )}
         <label className="toggle"><input type="checkbox" checked={settings.autoAnswer} onChange={(e) => set({ autoAnswer: e.target.checked })} /> <span>Answer automatically when the interviewer asks a question<br /><small>Your own words and questions you ask them are skipped.</small></span></label>
         <div className="chips">
           <button className={settings.answerStyle === 'concise' ? 'chip on' : 'chip'} onClick={() => set({ answerStyle: 'concise' })}>Short bullets</button>

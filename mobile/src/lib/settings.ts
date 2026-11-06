@@ -27,6 +27,10 @@ export interface Settings {
   standby: boolean;
   /** Keep the screen on while listening. */
   keepAwake: boolean;
+  /** Live answers use each provider's fast model. */
+  fastAnswers: boolean;
+  /** Override the fast model per provider. */
+  fastModels: Partial<Record<ProviderId, string>>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -43,6 +47,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoListen: false,
   standby: false,
   keepAwake: true,
+  fastAnswers: true,
+  fastModels: {},
 };
 
 const KEY = 'sorox.mobile.settings.v1';
@@ -57,6 +63,7 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> = localStorage): 
       keys: { ...(raw.keys ?? {}) },
       models: { ...(raw.models ?? {}) },
       modeNotes: { ...(raw.modeNotes ?? {}) },
+      fastModels: { ...(raw.fastModels ?? {}) },
     };
   } catch {
     return { ...DEFAULT_SETTINGS };

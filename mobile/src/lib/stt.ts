@@ -150,7 +150,7 @@ class DeepgramTranscriber implements Transcriber {
     this.stream = await micStream();
     const params = new URLSearchParams({
       model: 'nova-3', language: this.settings.language, smart_format: 'true', punctuate: 'true',
-      interim_results: 'true', endpointing: '400', utterance_end_ms: '1200', vad_events: 'true', diarize: 'true',
+      interim_results: 'true', endpointing: '300', utterance_end_ms: '1000', vad_events: 'true', diarize: 'true',
     });
     const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params}`, ['token', key]);
     this.ws = ws;
