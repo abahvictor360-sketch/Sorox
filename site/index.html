@@ -42,7 +42,7 @@
       <div><h3>Your profile</h3><p>Upload your CV and a job description. Answers, cover letters and Role Insight use your real experience.</p></div>
       <div><h3>Company Intel</h3><p>A research brief on the company you're meeting: culture, interviews, salary ranges and news.</p></div>
       <div><h3>Negotiation coach</h3><p>When pay comes up in the call, it tells you the move to make and the exact words to say.</p></div>
-      <div><h3>Your key, your machine</h3><p>Works with Gemini, OpenAI, Claude, Groq or a free local model via Ollama. No account needed.</p></div>
+      <div><h3>Your key, your machine</h3><p>Works with Gemini, OpenAI, Claude, Groq, OpenRouter, NVIDIA or a free local model via Ollama. Offline speech-to-text with local Whisper.</p></div>
     </section>
 
     <section id="download" class="block">
@@ -75,8 +75,9 @@
         </article>
         <article class="card" data-os="android">
           <h3>Android tablet</h3>
-          <p class="muted">Companion app, pairs with your computer</p>
-          <a class="button primary" data-asset="SoroX-Tablet-Android.apk">Download APK</a>
+          <p class="muted">The full app, with a tablet layout</p>
+          <a class="button primary" data-asset="SoroX-Android.apk">Download Soro X (APK)</a>
+          <a class="link" data-asset="SoroX-Tablet-Android.apk">Or the companion that pairs with your computer</a>
           <p class="hint">Open the file on the tablet and allow "Install unknown apps" when asked.</p>
         </article>
         <article class="card" data-os="ipad">
@@ -120,9 +121,13 @@
 
     <section id="mobile" class="block">
       <h2>On your phone: Soro X Mobile</h2>
-      <p>A full interview assistant that runs on the phone with your own AI key (Claude, OpenAI, Gemini or Groq). No computer needed.</p>
+      <p>A full interview assistant that runs on the phone or tablet with your own AI key (Claude, OpenAI, Gemini, Groq, OpenRouter or NVIDIA). No computer needed.</p>
       <ul class="compact">
-        <li><b>Live:</b> listens to the interview, spots the questions and drafts an answer from your CV and the job.</li>
+        <li><b>Live:</b> listens, tells the interviewer from you, and answers their questions on the spot from your CV and the job. Your own words are skipped.</li>
+        <li><b>Read screen:</b> photograph a question on a screen or paper and get the answer.</li>
+        <li><b>Notes:</b> every conversation is saved with notes written for you, plus your own.</li>
+        <li><b>Offline listening:</b> Whisper runs on the phone after a one-time download.</li>
+        <li><b>Turns itself on</b> at the time of a scheduled interview.</li>
         <li><b>Practice:</b> a mock interviewer for your target job. Answer out loud and get a score, what to fix and a stronger answer.</li>
         <li><b>Prep:</b> "Tell me about yourself", likely questions, role fit, STAR stories, company brief, questions to ask, a salary script and a cover letter.</li>
         <li><b>Connect to your computer:</b> opens Soro X's phone view over Wi-Fi, like the tablet app.</li>
@@ -150,6 +155,14 @@
       <details>
         <summary>Where do my keys and files go?</summary>
         <p>Keys are stored on your computer (Keychain on Mac, Credential Manager on Windows) and are only sent to the AI provider you chose. Your CV and job descriptions stay in a database on your computer.</p>
+      </details>
+      <details>
+        <summary>Can it start on its own when a meeting begins?</summary>
+        <p>Yes. On the computer: <b>Settings → Calendar → Detect meetings</b>, then turn on <b>Start automatically</b>: when a Zoom, Teams, Meet or Webex call starts, Soro X starts listening without asking. On the phone: add the interview under <b>Me → Schedule</b>; at the start time a notification opens Soro X already listening.</p>
+      </details>
+      <details>
+        <summary>Does it work offline?</summary>
+        <p>Speech-to-text can: choose <b>Local Whisper</b> on the computer (Settings → Audio) or <b>Offline (Whisper on this phone)</b> in the app. Answers need your AI provider, or a local Ollama model on the computer.</p>
       </details>
       <details>
         <summary>Does it cost anything?</summary>
