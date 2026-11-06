@@ -111,7 +111,7 @@ export async function complete(settings: Settings, req: CompleteRequest): Promis
   if (!key) throw new AiError(`Add your ${PROVIDERS[provider].label} key in Settings first.`, provider);
   const model = req.fast ? liveModelFor(settings, provider) : modelFor(settings, provider);
   // House style for everything the AI writes in the app.
-  req = { ...req, system: `${req.system}\n\nWriting style: never use em dashes (—). Use commas, colons, brackets or full stops instead.` };
+  req = { ...req, system: `${req.system}\n\nWriting style: never use em dashes (—) and never use emoji. Use commas, colons, brackets or full stops, and plain words such as Strong, Partial or Gap for status.` };
   let full = '';
   const emit = (d: string) => { if (!d) return; full += d; req.onText?.(d, full); };
   if (provider === 'claude') await streamClaude(key, model, req, emit);

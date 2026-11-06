@@ -257,3 +257,5 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .meter.wide { width: auto; flex: 1; height: 6px; }
 .read-aloud { margin: 0; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--glass-2); border-radius: 8px; font-size: 15.5px; line-height: 1.55; }
 .read-aloud small { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
+.md svg { vertical-align: -2px; margin-right: 3px; flex: none; }
+.mi-ok { color: var(--ok); } .mi-bad { color: var(--danger); } .mi-warn { color: var(--warn); }

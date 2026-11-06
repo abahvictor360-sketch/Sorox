@@ -53,7 +53,7 @@ export function ConnectComputer() {
   return (
     <div className="card">
       <h3>Connect to Soro X on your computer</h3>
-      <p className="muted small">On your computer: Soro X → Settings → Sync, turn on “Allow LAN access”, then scan the code. Both devices must be on the same Wi-Fi.</p>
+      <p className="muted small">On your computer, open Soro X and go to Settings, Sync. Turn on “Allow LAN access”, then scan the code. Both devices must be on the same Wi-Fi.</p>
       {scanning ? (
         <div className="scanner"><video ref={video} playsInline muted /><button className="ghost" onClick={stopCamera}>Cancel</button></div>
       ) : (

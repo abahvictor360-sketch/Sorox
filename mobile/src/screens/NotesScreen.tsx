@@ -96,7 +96,7 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
       <div className="grid">
         {shown.map((s) => {
           const mode = MODES.find((m) => m.id === s.mode);
-          const preview = (s.notes || s.myNotes || s.lines.map((l) => l.text).join(' ')).replace(/[#*_>-]/g, '').slice(0, 140);
+          const preview = (s.notes || s.myNotes || s.lines.map((l) => l.text).join(' ')).replace(/[#*_>-]/g, '').replace(/\p{Extended_Pictographic}\uFE0F?/gu, '').slice(0, 140);
           return (
             <button key={s.id} className="glass card tile" onClick={() => { setOpenId(s.id); setTab('notes'); }}>
               <b>{s.title}</b>

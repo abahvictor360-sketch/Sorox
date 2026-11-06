@@ -9,7 +9,7 @@ import { MeScreen, type MeTab } from './screens/MeScreen';
 import { onAppointmentOpened, takeDueAppointment } from './lib/schedule';
 import { Icon } from './components/Icon';
 import { checkForUpdate, dismissUpdate, type UpdateInfo } from './lib/updates';
-import { Download, X } from 'lucide-react';
+import { ChevronRight, Download, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
 type Tab = 'live' | 'notes' | 'practice' | 'prep' | 'me';
@@ -93,10 +93,10 @@ export default function App() {
           </div>
         )}
         {needsKey && tab !== 'me' && (
-          <button className="banner" onClick={() => { setTab('me'); setMeTab('settings'); }}>Add your AI key to get answers →</button>
+          <button className="banner" onClick={() => { setTab('me'); setMeTab('settings'); }}>Add your AI key to get answers <ChevronRight size={16} aria-hidden /></button>
         )}
         {!needsKey && !hasProfile(profile) && (tab === 'live' || tab === 'prep' || tab === 'practice') && (
-          <button className="banner soft" onClick={() => { setTab('me'); setMeTab('profile'); }}>Add your CV and the job for answers in your own words →</button>
+          <button className="banner soft" onClick={() => { setTab('me'); setMeTab('profile'); }}>Add your CV and the job for answers in your own words <ChevronRight size={16} aria-hidden /></button>
         )}
         <main className={`content ${tab === 'live' ? 'is-live' : ''}`}>
           {/* Live stays mounted so listening continues while you look at notes or prep. */}

@@ -6,7 +6,7 @@ import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
 import { VoiceSetup } from '../components/VoiceSetup';
 import { ModeIcon } from '../components/ModeIcon';
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, ExternalLink } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { BUILD_RUN, BUILD_TIME, DOWNLOAD_PAGE, checkForUpdate, type UpdateInfo } from '../lib/updates';
 
@@ -60,7 +60,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
             <button className="ghost small" onClick={() => setShow(!show)}>{show ? 'Hide' : 'Show'}</button>
           </div>
         </label>
-        <a href={PROVIDERS[p].keyUrl} target="_blank" rel="noreferrer" className="link">Get a key →</a>
+        <a href={PROVIDERS[p].keyUrl} target="_blank" rel="noreferrer" className="link">Get a key <ExternalLink size={13} aria-hidden /></a>
         <label>Model
           <input list={`models-${p}`} value={settings.models[p] ?? ''} placeholder={PROVIDERS[p].defaultModel} spellCheck={false} autoCapitalize="off"
             onChange={(e) => onChange({ ...settings, models: { ...settings.models, [p]: e.target.value } })} />
@@ -122,7 +122,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
         <label className="toggle"><input type="checkbox" checked={settings.autoListen} onChange={(e) => set({ autoListen: e.target.checked })} /> <span>Start listening as soon as Soro X opens</span></label>
         <label className="toggle"><input type="checkbox" checked={settings.standby} onChange={(e) => set({ standby: e.target.checked })} /> <span>…on standby: wait quietly and turn on by itself when the first question is heard<br /><small>Nothing is saved or sent for answers until then. Also available as the Standby button in Live.</small></span></label>
         <label className="toggle"><input type="checkbox" checked={settings.keepAwake} onChange={(e) => set({ keepAwake: e.target.checked })} /> <span>Keep the screen on while listening</span></label>
-        <p className="muted small">Add your interviews under Me → Schedule: at the start time a notification opens Soro X and starts listening.</p>
+        <p className="muted small">Add your interviews in Schedule (Me tab). At the start time a notification opens Soro X and starts listening.</p>
       </div>
 
       <div className="card">

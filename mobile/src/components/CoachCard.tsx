@@ -1,7 +1,7 @@
 // The negotiation coach card (same content as the desktop's).
 import { useEffect, useState } from 'react';
 import { Handshake, Timer } from 'lucide-react';
-import { noEmDash } from './Markdown';
+import { iconize, noEmDash } from './Markdown';
 import type { Coaching } from '../lib/negotiation';
 
 const PHASE: Record<string, string> = {
@@ -31,8 +31,8 @@ export function CoachCard({ c }: { c: Coaching }) {
   return (
     <div className="glass coach">
       <div className="coach-head"><Handshake size={14} aria-hidden /> Negotiation coach · {PHASE[c.phase] ?? c.phase}</div>
-      {c.tacticalNote && <b>{noEmDash(c.tacticalNote)}</b>}
-      {c.exactScript && <blockquote><small>Say</small>“{noEmDash(c.exactScript)}”</blockquote>}
+      {c.tacticalNote && <b>{iconize(noEmDash(c.tacticalNote), 'tn')}</b>}
+      {c.exactScript && <blockquote><small>Say</small>“{iconize(noEmDash(c.exactScript), 'es')}”</blockquote>}
       {(c.theirOffer !== null || c.yourTarget !== null) && (
         <div className="coach-nums">
           <span>Their number <b>{money(c.theirOffer, c.currency)}</b></span>

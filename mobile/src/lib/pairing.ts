@@ -1,4 +1,4 @@
-// Soro X Mobile: pairing with Soro X on your computer (Settings → Sync on the
+// Soro X Mobile: pairing with Soro X on your computer (Settings > Sync on the
 // desktop shows a QR code / link http://<computer-ip>:<port>/?t=<token>).
 // Same rules as the tablet companion (tablet/www/pairing.js): only links to a
 // computer on the local network are opened; there is no cloud relay.
@@ -23,12 +23,12 @@ export function parsePairingLink(input: string): PairingResult {
   if (!text) return { ok: false, error: 'Scan the QR code or paste the link from Soro X on your computer.' };
   if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = `http://${text}`;
   let u: URL;
-  try { u = new URL(text); } catch { return { ok: false, error: 'That is not a link. Copy it again from Settings → Sync on your computer.' }; }
+  try { u = new URL(text); } catch { return { ok: false, error: 'That is not a link. Copy it again from Settings > Sync on your computer.' }; }
   if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, error: 'That link is not a Soro X pairing link.' };
-  if (!isLocalNetworkHost(u.hostname)) return { ok: false, error: 'This link does not point to a computer on your Wi-Fi. Turn on "Allow LAN access" in Settings → Sync and use the link it shows.' };
-  if (u.hostname === 'localhost' || u.hostname.startsWith('127.')) return { ok: false, error: 'This link only works on the computer itself. In Settings → Sync, turn on "Allow LAN access" and scan the new code.' };
+  if (!isLocalNetworkHost(u.hostname)) return { ok: false, error: 'This link does not point to a computer on your Wi-Fi. Turn on "Allow LAN access" in Settings > Sync and use the link it shows.' };
+  if (u.hostname === 'localhost' || u.hostname.startsWith('127.')) return { ok: false, error: 'This link only works on the computer itself. In Settings > Sync, turn on "Allow LAN access" and scan the new code.' };
   const token = u.searchParams.get('t');
-  if (!token || token.length < 16) return { ok: false, error: 'The link is missing its pairing code. Copy the whole link from Settings → Sync.' };
+  if (!token || token.length < 16) return { ok: false, error: 'The link is missing its pairing code. Copy the whole link from Settings > Sync.' };
   const clean = new URL(`${u.protocol}//${u.host}/`);
   clean.searchParams.set('t', token);
   return { ok: true, url: clean.toString(), origin: clean.origin, host: u.hostname, port: u.port || (u.protocol === 'https:' ? '443' : '80') };

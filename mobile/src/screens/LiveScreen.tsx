@@ -19,7 +19,7 @@ import { warmUp, type ChatMessage } from '../lib/ai';
 import { sameQuestion } from '../lib/conversation';
 import { Markdown } from '../components/Markdown';
 import { ModeIcon } from '../components/ModeIcon';
-import { ArrowUp, AudioLines, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
+import { AArrowDown, AArrowUp, ArrowUp, AudioLines, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
 import { CoachCard } from '../components/CoachCard';
 
 type ItemKind = 'answer' | 'action' | 'image' | 'chat' | 'coach' | 'note';
@@ -364,8 +364,8 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
             <span className="dot" />{status}
           </button>
           <span className="grow" />
-          <button className="pill ghosty" aria-label="Smaller text" onClick={() => setGlassSize((n) => Math.max(14, n - 2))}>A−</button>
-          <button className="pill ghosty" aria-label="Larger text" onClick={() => setGlassSize((n) => Math.min(34, n + 2))}>A+</button>
+          <button className="pill ghosty" aria-label="Smaller text" onClick={() => setGlassSize((n) => Math.max(14, n - 2))}><AArrowDown size={17} /></button>
+          <button className="pill ghosty" aria-label="Larger text" onClick={() => setGlassSize((n) => Math.min(34, n + 2))}><AArrowUp size={17} /></button>
           <button className="pill" onClick={() => setGlassMode(false)}>Exit glass</button>
         </div>
         <div className="gv-main">
@@ -429,7 +429,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
       )}
 
       {mic.error && <p className="error banner-in">{mic.error}</p>}
-      {noKey && <p className="hint banner-in">Add an AI key in Me → Settings to get answers. Listening and notes work without one.</p>}
+      {noKey && <p className="hint banner-in">Add an AI key in Settings (Me tab) to get answers. Listening and notes work without one.</p>}
 
       <div className="live-body">
         {/* Transcript */}
