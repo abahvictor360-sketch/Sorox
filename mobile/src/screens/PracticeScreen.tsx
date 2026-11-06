@@ -4,6 +4,7 @@ import type { Profile } from '../lib/profile';
 import { gradeAnswer, nextPracticeQuestion, type Feedback, type PracticeKind } from '../lib/interview';
 import { useTranscriber } from '../lib/useTranscriber';
 import { Markdown } from '../components/Markdown';
+import { Mic, Square } from 'lucide-react';
 
 const KINDS: { id: PracticeKind; label: string }[] = [
   { id: 'mixed', label: 'Mixed' }, { id: 'behavioral', label: 'Behavioural' }, { id: 'technical', label: 'Technical' }, { id: 'role-fit', label: 'Role fit' },
@@ -64,8 +65,8 @@ export function PracticeScreen({ settings, profile }: { settings: Settings; prof
               {mic.error && <p className="error">{mic.error}</p>}
               <div className="row">
                 {!mic.listening
-                  ? <button className="secondary" onClick={() => void mic.start()}>🎙 Speak</button>
-                  : <button className="danger" onClick={() => void mic.stop()}>■ Done speaking</button>}
+                  ? <button className="secondary" onClick={() => void mic.start()}><Mic size={16} aria-hidden /> Speak</button>
+                  : <button className="danger" onClick={() => void mic.stop()}><Square size={14} fill="currentColor" aria-hidden /> Done speaking</button>}
                 <button className="primary" disabled={!!busy} onClick={() => void grade()}>{busy === 'grading' ? 'Grading…' : 'Get feedback'}</button>
               </div>
             </>

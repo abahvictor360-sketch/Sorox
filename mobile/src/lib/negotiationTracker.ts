@@ -1,5 +1,5 @@
 /**
- * Soro X — live salary-negotiation tracking (shared with the desktop:
+ * Soro X: live salary-negotiation tracking (shared with the desktop:
  * premium/electron/knowledge/NegotiationConversationTracker.ts; keep in step).
  *
  *   textHasCompEvidence()   spots pay talk (also used so salary questions are not

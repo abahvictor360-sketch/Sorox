@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — the object electron/main.ts loads as `KnowledgeOrchestrator`.
+ * Soro X profile engine: the object electron/main.ts loads as `KnowledgeOrchestrator`.
  *
  * What it does:
  *   - ingestDocument(): parse a résumé / job description with the app's own safe

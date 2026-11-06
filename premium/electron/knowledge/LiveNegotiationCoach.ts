@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — live salary-negotiation coaching.
+ * Soro X profile engine: live salary-negotiation coaching.
  *
  * When the interviewer talks pay during a call, the orchestrator asks the user's
  * own AI provider (through the live-coaching function electron/main.ts wires in)
@@ -33,10 +33,11 @@ Rules:
 - Use only facts from <candidate>, <job>, <prepared_plan> and <conversation>. Never invent achievements, offers or numbers the candidate has not got.
 - Never volunteer the candidate's current or past salary; redirect to the value of this role.
 - Anchor with a confident range whose bottom is at or above the candidate's target. If no target is known, base it on the job's stated pay, or say to ask for the budget first.
-- When they make an offer: thank them, show enthusiasm, then counter or ask for time — do not accept on the spot.
+- When they make an offer: thank them, show enthusiasm, then counter or ask for time. Do not accept on the spot.
 - When they push back: hold the number politely, then widen the conversation (sign-on bonus, equity, title, review date, remote days, start date) instead of dropping straight away.
 - Keep it natural and warm. exactScript is what they will say out loud: 1–3 short sentences, first person, no brackets or placeholders.
 - tacticalNote: at most 18 words, the one move to make now.
+- Never use em dashes (—) in any text; use commas, colons or full stops.
 - showSilenceTimer: true when exactScript states a number or a counter-offer (they should then stay quiet and let the interviewer answer).
 
 Reply with JSON only:

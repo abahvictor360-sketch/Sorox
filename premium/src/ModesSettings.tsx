@@ -1,5 +1,5 @@
 /**
- * Soro X — Modes manager.
+ * Soro X: Modes manager.
  *
  * Soro X's own replacement for the premium Modes screen (loaded through
  * src/premium/index.tsx as the default export): list, switch, add and remove
@@ -60,7 +60,7 @@ function ModeEditor({ mode, canChange, onChanged }: { mode: ModeRow; canChange: 
                     className="mt-1 rounded-md border border-border-muted px-2.5 py-1 text-xs hover:bg-bg-elevated disabled:opacity-40">Save instructions</button>
             </div>
             <div>
-                <div className="mb-1 text-xs font-medium">Reference files <span className="font-normal text-text-secondary">— notes, slides, docs the answers can draw on</span></div>
+                <div className="mb-1 text-xs font-medium">Reference files <span className="font-normal text-text-secondary">(notes, slides and docs the answers can draw on)</span></div>
                 <div className="space-y-1">
                     {files.map((f) => (
                         <div key={f.id} className="flex items-center gap-2 text-sm">

@@ -1,5 +1,5 @@
 /**
- * Soro X — read a job posting from its URL (roleInsight:import-jd-url).
+ * Soro X: read a job posting from its URL (roleInsight:import-jd-url).
  * The provider is the Tavily search provider; its extract call returns the page text.
  */
 export interface UrlExtractor {

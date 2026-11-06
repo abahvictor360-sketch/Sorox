@@ -1,4 +1,4 @@
-// Soro X Tablet — pairing link handling (pure functions, unit-tested in tests/).
+// Soro X Tablet: pairing link handling (pure functions, unit-tested in tests/).
 //
 // The desktop app's Settings → Sync shows a QR code / link of the form
 //   http://<computer-ip>:<port>/?t=<token>

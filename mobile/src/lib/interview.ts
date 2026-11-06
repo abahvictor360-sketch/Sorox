@@ -1,4 +1,4 @@
-// Soro X Mobile — interview logic: spotting questions in a transcript, and the
+// Soro X Mobile: interview logic: spotting questions in a transcript, and the
 // prompts behind live answers, practice feedback and preparation documents.
 // Every prompt is grounded in the user's own CV and target job (profile.ts).
 import { complete, completeJson, type ChatMessage, type Effort, type ImagePart } from './ai';
@@ -31,13 +31,13 @@ export function latestQuestion(segments: string[]): { question: string; context:
 
 // ─── Modes (like the desktop's Modes) ───────────────────────────────────────
 
-export const MODES: { id: ModeId; label: string; icon: string; blurb: string; role: string; usesProfile: boolean }[] = [
-  { id: 'interview', label: 'Job interview', icon: '💼', blurb: 'Answers as you, from your CV and the job.', role: 'a job candidate in an interview', usesProfile: true },
-  { id: 'technical', label: 'Technical interview', icon: '🧑‍💻', blurb: 'Coding, system design and technical questions.', role: 'a candidate in a technical interview (coding, system design, technical depth)', usesProfile: true },
-  { id: 'sales', label: 'Sales call', icon: '📈', blurb: 'Objections, pricing and next steps.', role: 'a salesperson on a call with a prospect', usesProfile: false },
-  { id: 'meeting', label: 'Meeting', icon: '👥', blurb: 'What to say when you are asked something.', role: 'a professional in a work meeting', usesProfile: true },
-  { id: 'lecture', label: 'Class / lecture', icon: '🎓', blurb: 'Explains questions the teacher asks.', role: 'a student in a class or lecture', usesProfile: false },
-  { id: 'general', label: 'General', icon: '✨', blurb: 'Any conversation.', role: 'the user in a conversation', usesProfile: false },
+export const MODES: { id: ModeId; label: string; blurb: string; role: string; usesProfile: boolean }[] = [
+  { id: 'interview', label: 'Job interview', blurb: 'Answers as you, from your CV and the job.', role: 'a job candidate in an interview', usesProfile: true },
+  { id: 'technical', label: 'Technical interview', blurb: 'Coding, system design and technical questions.', role: 'a candidate in a technical interview (coding, system design, technical depth)', usesProfile: true },
+  { id: 'sales', label: 'Sales call', blurb: 'Objections, pricing and next steps.', role: 'a salesperson on a call with a prospect', usesProfile: false },
+  { id: 'meeting', label: 'Meeting', blurb: 'What to say when you are asked something.', role: 'a professional in a work meeting', usesProfile: true },
+  { id: 'lecture', label: 'Class / lecture', blurb: 'Explains questions the teacher asks.', role: 'a student in a class or lecture', usesProfile: false },
+  { id: 'general', label: 'General', blurb: 'Any conversation.', role: 'the user in a conversation', usesProfile: false },
 ];
 
 export const modeOf = (settings: Settings) => MODES.find((m) => m.id === settings.mode) ?? MODES[0];
@@ -80,7 +80,7 @@ export async function answerQuestion(
   onText: (delta: string, full: string) => void, signal?: AbortSignal, opts: { allowSkip?: boolean } = {},
 ): Promise<string> {
   const ctx = modeContext(settings, profile);
-  const content = `${ctx || (modeOf(settings).usesProfile ? '(No CV added yet — answer generally and remind them to add their CV in Profile.)' : '')}
+  const content = `${ctx || (modeOf(settings).usesProfile ? '(No CV added yet. Answer generally and remind them to add their CV in Profile.)' : '')}
 
 Conversation so far:
 ${context || '(none)'}
@@ -267,7 +267,7 @@ export type PrepKind = 'pitch' | 'questions' | 'fit' | 'company' | 'stories' | '
 export const PREP_KINDS: { id: PrepKind; title: string; blurb: string; effort: Effort; needsJob?: boolean }[] = [
   { id: 'pitch', title: 'Tell me about yourself', blurb: 'A 60–90 second pitch from your CV, tuned to this job.', effort: 'medium' },
   { id: 'questions', title: 'Likely questions & answers', blurb: 'The 10 questions you are most likely to get, with answer outlines.', effort: 'medium', needsJob: true },
-  { id: 'fit', title: 'Role fit', blurb: 'Requirement by requirement: where you are strong, partial, or have a gap — and how to handle it.', effort: 'high', needsJob: true },
+  { id: 'fit', title: 'Role fit', blurb: 'Requirement by requirement: where you are strong, partial, or have a gap, and how to handle it.', effort: 'high', needsJob: true },
   { id: 'stories', title: 'STAR stories', blurb: 'Your best experiences as ready-to-tell Situation-Task-Action-Result stories.', effort: 'medium' },
   { id: 'company', title: 'Company brief', blurb: 'What to know about the company before you walk in (from the AI\'s knowledge; check recent news).', effort: 'medium', needsJob: true },
   { id: 'ask', title: 'Questions to ask them', blurb: 'Smart, specific questions for the end of the interview.', effort: 'low', needsJob: true },
@@ -278,7 +278,7 @@ export const PREP_KINDS: { id: PrepKind; title: string; blurb: string; effort: E
 const PREP_PROMPTS: Record<PrepKind, string> = {
   pitch: 'Write a 60–90 second "Tell me about yourself" answer in the first person: present role, 2 most relevant achievements with results, why this role/company now. Then 3 bullet tips for delivering it.',
   questions: 'List the 10 questions this candidate is most likely to be asked for this job (mix of behavioural, technical/role and motivation). For each: the question in bold, why they will ask it, and a 3-bullet answer outline from the candidate\'s real experience.',
-  fit: 'Go through every requirement of the target job. For each give a status (✅ strong / 🟡 partial / ❌ gap), the CV evidence, and how to address it in the interview. End with an overall fit score out of 100 and the 3 things to emphasise.',
+  fit: 'Go through every requirement of the target job. For each give a status (Strong / Partial / Gap), the CV evidence, and how to address it in the interview. End with an overall fit score out of 100 and the 3 things to emphasise.',
   stories: 'Turn the candidate\'s 5 strongest experiences into STAR stories (Situation, Task, Action, Result) of 4–6 sentences each, with numbers only where the CV gives them. Label each with the competencies it proves (leadership, conflict, failure, impact…).',
   company: 'Write a pre-interview brief on the target company: what it does, business model, products, culture and values, recent strategy, competitors, and what interviews there tend to focus on. Say clearly which points the candidate should verify against recent news, since your knowledge may be dated. End with 3 ways to connect their background to the company.',
   ask: 'Suggest 8 specific, thoughtful questions the candidate can ask the interviewers, grouped by audience (hiring manager, team, HR), each with one line on why it lands well.',

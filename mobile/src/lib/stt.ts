@@ -1,4 +1,4 @@
-// Soro X Mobile — live transcription from the microphone.
+// Soro X Mobile: live transcription from the microphone.
 //
 //   device   the phone's own speech recognition (Android / iOS), free, no key
 //   whisper  Whisper running on the phone itself: offline after a one-time download

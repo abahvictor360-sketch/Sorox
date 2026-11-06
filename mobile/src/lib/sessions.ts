@@ -1,4 +1,4 @@
-// Soro X Mobile — saved sessions (transcript, answers, your notes, AI notes),
+// Soro X Mobile: saved sessions (transcript, answers, your notes, AI notes),
 // stored on this phone. Like the desktop's meeting history.
 import type { ModeId } from './settings';
 import type { Role } from './conversation';

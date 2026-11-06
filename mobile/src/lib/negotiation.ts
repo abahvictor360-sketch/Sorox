@@ -1,4 +1,4 @@
-// Soro X Mobile — live negotiation coaching (the desktop's coach, on the phone).
+// Soro X Mobile: live negotiation coaching (the desktop's coach, on the phone).
 import { completeJson } from './ai';
 import { profileContext, type Profile } from './profile';
 import type { Settings } from './settings';

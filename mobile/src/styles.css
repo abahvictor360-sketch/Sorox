@@ -1,4 +1,4 @@
-/* Soro X Mobile — the desktop overlay's look: dark frosted glass over a deep
+/* Soro X Mobile: the desktop overlay's look: dark frosted glass over a deep
    violet backdrop, pill controls, chat-style question bubbles. Light theme
    follows the system. Phones stack; tablets get a side rail and two panes. */
 :root {
@@ -234,3 +234,14 @@ p.small, small, .small { font-size: 12.5px; }
 .gv-empty { margin: auto; text-align: center; color: var(--muted); font-size: calc(var(--gv-size, 22px) * 0.85); max-width: 520px; }
 .gv-ticker { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
 .gv-ticker::before { content: '“'; } .gv-ticker::after { content: '”'; }
+
+/* ── Icons (Lucide) ── */
+button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.seg, .saved button, .ghost.grow, .tile, .pane-head { justify-content: flex-start; }
+.ok svg, .muted svg, .coach-head svg, .silence svg, .note-card svg, .tile svg { vertical-align: -2px; flex: none; }
+.coach-head, .silence { display: flex; align-items: center; gap: 6px; }
+.note-card { display: flex; align-items: center; gap: 6px; }
+.mode .mi { display: grid; place-items: center; color: var(--accent-2); }
+.chip .ico, .pill .ico { color: var(--accent-2); }
+.chip.on .ico { color: #fff; }
+.mic svg, .send svg { flex: none; }

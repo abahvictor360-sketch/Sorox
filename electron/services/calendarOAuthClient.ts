@@ -9,7 +9,7 @@
 //   1. GOOGLE_CALENDAR_CLIENT_ID + _SECRET from the environment (development),
 //   2. the client the user saved in Settings → Calendar (stored encrypted),
 //   3. a client baked in at build time (GitHub secrets GOOGLE_CALENDAR_CLIENT_ID
-//      / _SECRET, see scripts/build-electron.js) — only when it has a secret.
+//      / _SECRET, see scripts/build-electron.js), only when it has a secret.
 // Pure functions, so every branch is unit-tested without Electron.
 
 export type CalendarClientSource = 'env' | 'user' | 'built-in';
@@ -61,7 +61,7 @@ export function validateCalendarClient(id: unknown, secret: unknown): string | n
   return null;
 }
 
-/** "1234…apps.googleusercontent.com" — enough to recognise, without echoing the whole ID. */
+/** "1234…apps.googleusercontent.com": enough to recognise, without echoing the whole ID. */
 export function maskClientId(id: string): string {
   const [prefix, ...rest] = id.split('-');
   return rest.length ? `${prefix.slice(0, 4)}…-${rest.join('-').slice(-28)}` : `${id.slice(0, 8)}…`;

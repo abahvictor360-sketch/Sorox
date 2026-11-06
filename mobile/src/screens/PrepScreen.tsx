@@ -3,6 +3,7 @@ import type { Settings } from '../lib/settings';
 import type { Profile } from '../lib/profile';
 import { PREP_KINDS, generatePrep, type PrepKind } from '../lib/interview';
 import { Markdown } from '../components/Markdown';
+import { ArrowLeft } from 'lucide-react';
 
 const KEY = 'sorox.mobile.prep.v1';
 type Saved = Partial<Record<PrepKind, { text: string; at: string }>>;
@@ -38,7 +39,7 @@ export function PrepScreen({ settings, profile }: { settings: Settings; profile:
     const text = busy ? live : saved[open]?.text ?? live;
     return (
       <section>
-        <div className="row"><button className="ghost" onClick={() => { ctl.current?.abort(); setBusy(false); setOpen(null); }}>← Back</button>
+        <div className="row"><button className="ghost" onClick={() => { ctl.current?.abort(); setBusy(false); setOpen(null); }}><ArrowLeft size={16} aria-hidden /> Back</button>
           <span className="grow" />
           {!busy && text && <button className="ghost" onClick={() => { void navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }); }}>{copied ? 'Copied' : 'Copy'}</button>}
           {!busy && <button className="secondary" onClick={() => void run(open)}>Regenerate</button>}

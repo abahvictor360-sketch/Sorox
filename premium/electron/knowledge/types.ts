@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — shared types.
+ * Soro X profile engine: shared types.
  *
  * This is Soro X's own implementation of the optional `premium/` package the
  * core app loads at runtime (see electron/main.ts "Premium: Knowledge modules

@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — live salary-negotiation tracking.
+ * Soro X profile engine: live salary-negotiation tracking.
  *
  *   textHasCompEvidence()   spots pay talk (also used so salary questions are not
  *                           treated as plain résumé recall).

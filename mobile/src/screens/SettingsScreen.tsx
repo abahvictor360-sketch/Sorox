@@ -4,6 +4,8 @@ import { PROVIDERS, complete, modelFor } from '../lib/ai';
 import { MODES } from '../lib/interview';
 import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
+import { ModeIcon } from '../components/ModeIcon';
+import { CircleCheck } from 'lucide-react';
 
 const STT: { id: SttEngine; label: string; note: string }[] = [
   { id: 'device', label: 'Phone (free)', note: 'Your phone\'s own speech recognition. No key needed.' },
@@ -35,8 +37,8 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
     setTest('Testing…');
     try {
       const out = await complete(settings, { system: 'Reply with exactly: OK', messages: [{ role: 'user', content: 'Say OK.' }], effort: 'low', maxTokens: 300 });
-      setTest(out.trim() ? `✓ Works (${modelFor(settings)})` : '✓ Connected, but the reply was empty.');
-    } catch (e: any) { setTest(`✗ ${e?.message ?? e}`); }
+      setTest(out.trim() ? `Works (${modelFor(settings)})` : 'Connected, but the reply was empty.');
+    } catch (e: any) { setTest(`Failed: ${e?.message ?? e}`); }
   };
 
   return (
@@ -61,7 +63,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
           <datalist id={`models-${p}`}>{PROVIDERS[p].models.map((m) => <option key={m} value={m} />)}</datalist>
         </label>
         {(p === 'openrouter' || p === 'nvidia') && <p className="muted small">Type any model id from {p === 'openrouter' ? 'openrouter.ai/models' : 'build.nvidia.com'}. To read questions from photos, pick a model that accepts images.</p>}
-        <div className="row"><button className="secondary" disabled={!settings.keys[p]} onClick={() => void testKey()}>Test key</button><span className={test.startsWith('✗') ? 'error' : 'muted'}>{test}</span></div>
+        <div className="row"><button className="secondary" disabled={!settings.keys[p]} onClick={() => void testKey()}>Test key</button><span className={test.startsWith('Failed') ? 'error' : test.startsWith('Works') ? 'ok' : 'muted'}>{test.startsWith('Works') && <CircleCheck size={14} aria-hidden />} {test}</span></div>
         <p className="muted small">Keys stay on this phone and are only sent to the provider they belong to.</p>
       </div>
 
@@ -77,7 +79,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
                 <span><b>{m.label}</b> <small>{m.size}{have.includes(m.id) ? ' · downloaded' : ''}</small><br /><small>{m.note}</small></span></label>
             ))}
             {have.includes(settings.whisperModel)
-              ? <p className="ok small">✓ Ready offline.</p>
+              ? <p className="ok small"><CircleCheck size={14} aria-hidden /> Ready offline.</p>
               : <button className="secondary" disabled={!!dl && !dl.error} onClick={() => void download(settings.whisperModel)}>{dl && !dl.error ? `Downloading… ${dl.pct ?? ''}${dl.pct !== null ? '%' : ''}` : 'Download now (Wi-Fi recommended)'}</button>}
             {dl?.error && <p className="error">{dl.error}</p>}
           </div>
@@ -111,7 +113,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
       <div className="card">
         <h3>Mode instructions</h3>
         <p className="muted small">Added to every answer in that mode, like the desktop's mode instructions.</p>
-        <div className="chips">{MODES.map((m) => <button key={m.id} className={notesMode === m.id ? 'chip on' : 'chip'} onClick={() => setNotesMode(m.id)}>{m.icon} {m.label}</button>)}</div>
+        <div className="chips">{MODES.map((m) => <button key={m.id} className={notesMode === m.id ? 'chip on' : 'chip'} onClick={() => setNotesMode(m.id)}><ModeIcon id={m.id} size={14} /> {m.label}</button>)}</div>
         <textarea rows={4} value={settings.modeNotes[notesMode] ?? ''} onChange={(e) => onChange({ ...settings, modeNotes: { ...settings.modeNotes, [notesMode]: e.target.value } })}
           placeholder={notesMode === 'technical' ? 'e.g. I code in Python; mention Big-O; keep answers short.' : 'e.g. Keep answers under 60 seconds; mention my leadership experience.'} />
       </div>
@@ -120,7 +122,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
 
       <div className="card about">
         <h3>About</h3>
-        <p>Soro X Mobile — for personal, non-commercial use.</p>
+        <p>Soro X Mobile, for personal and non-commercial use.</p>
         <p className="small">This project is based on Natively, originally developed by Natively AI Private Limited. Licensed under the Natively Personal Use Source License v1.0.</p>
       </div>
     </section>

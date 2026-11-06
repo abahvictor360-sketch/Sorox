@@ -1,4 +1,4 @@
-// Soro X Mobile — who said what, and which question is waiting for an answer.
+// Soro X Mobile: who said what, and which question is waiting for an answer.
 //
 // The phone's microphone hears both sides of the conversation. Each finished
 // utterance becomes a Segment with a role:
@@ -38,7 +38,7 @@ export interface PendingQuestion {
 // "We" / "our" are left out: interviewers say them all the time ("we'd like to offer…").
 const FIRST_PERSON = /\b(i|i'm|i've|i'd|i'll|my|me|mine|myself)\b/gi;
 
-/** Share of words that are first person ("I", "my", "we") — answers are full of them. */
+/** Share of words that are first person ("I", "my", "we"); answers are full of them. */
 export function firstPersonRatio(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   if (!words) return 0;

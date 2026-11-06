@@ -1,4 +1,4 @@
-// Soro X Mobile — upcoming interviews and meetings. At the start time a
+// Soro X Mobile: upcoming interviews and meetings. At the start time a
 // notification appears; tapping it opens Soro X straight into Live and starts
 // listening, so the first question is never missed.
 import { Capacitor } from '@capacitor/core';

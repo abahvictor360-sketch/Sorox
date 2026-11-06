@@ -1,6 +1,7 @@
 // Open Soro X running on your computer (Settings → Sync) over Wi-Fi.
 import { useEffect, useRef, useState } from 'react';
 import jsQR from 'jsqr';
+import { Laptop, QrCode } from 'lucide-react';
 import { loadComputers, parsePairingLink, reachable, rememberComputer, saveComputers, type SavedComputer } from '../lib/pairing';
 
 export function ConnectComputer() {
@@ -56,7 +57,7 @@ export function ConnectComputer() {
       {scanning ? (
         <div className="scanner"><video ref={video} playsInline muted /><button className="ghost" onClick={stopCamera}>Cancel</button></div>
       ) : (
-        <button className="secondary" onClick={() => void scan()}>📷 Scan QR code</button>
+        <button className="secondary" onClick={() => void scan()}><QrCode size={16} aria-hidden /> Scan QR code</button>
       )}
       <form className="row" onSubmit={(e) => { e.preventDefault(); void connect(link); }}>
         <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="http://192.168.1.20:8787/?t=…" />
@@ -65,7 +66,7 @@ export function ConnectComputer() {
       {msg && <p className={msg.bad ? 'error' : 'muted'}>{msg.text}</p>}
       {saved.map((c) => (
         <div key={c.origin} className="row saved">
-          <button className="ghost grow" onClick={() => void connect(c.url)}>💻 {c.host}</button>
+          <button className="ghost grow" onClick={() => void connect(c.url)}><Laptop size={16} aria-hidden /> {c.host}</button>
           <button className="ghost small" onClick={() => { const l = saved.filter((x) => x.origin !== c.origin); saveComputers(l); setSaved(l); }}>Forget</button>
         </div>
       ))}

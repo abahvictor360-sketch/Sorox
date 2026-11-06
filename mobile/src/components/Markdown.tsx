@@ -19,8 +19,13 @@ function inline(text: string, key: string): ReactNode[] {
   return out;
 }
 
+/** House style: no em dashes, even if the AI writes one anyway. */
+export function noEmDash(text: string): string {
+  return text.replace(/\s*—\s*/g, (m, off: number, all: string) => (off === 0 || off + m.length >= all.length ? ' ' : ', ')).trim();
+}
+
 export function Markdown({ text }: { text: string }) {
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const lines = noEmDash(text).replace(/\r\n/g, '\n').split('\n');
   const blocks: ReactNode[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
   const flush = () => {

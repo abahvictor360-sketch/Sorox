@@ -1,8 +1,8 @@
 /**
- * Soro X — web search through the user's own Tavily key (Settings → Profile
+ * Soro X: web search through the user's own Tavily key (Settings → Profile
  * Intelligence → Tavily Search). Loaded by electron/services/resolveCompanySearchProvider.ts.
  *
- * API: https://docs.tavily.com — POST /search and POST /extract, key in the body.
+ * API: https://docs.tavily.com: POST /search and POST /extract, key in the body.
  */
 
 const API = 'https://api.tavily.com';

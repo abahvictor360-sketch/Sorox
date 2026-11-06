@@ -1,5 +1,5 @@
 /**
- * Soro X — company research for the Company Intel screen.
+ * Soro X: company research for the Company Intel screen.
  *
  * With a Tavily key: a few web searches (culture, interviews, pay, news) are
  * summarised by the user's AI provider, and the sources are kept so the screen

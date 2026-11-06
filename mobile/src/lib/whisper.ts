@@ -1,4 +1,4 @@
-// Soro X Mobile — client for the on-device Whisper worker.
+// Soro X Mobile: client for the on-device Whisper worker.
 
 export const WHISPER_MODELS: { id: string; label: string; size: string; note: string }[] = [
   { id: 'onnx-community/whisper-tiny.en', label: 'Tiny (English)', size: '≈ 45 MB', note: 'Fastest. Good for clear English.' },

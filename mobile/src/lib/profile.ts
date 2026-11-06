@@ -1,4 +1,4 @@
-// Soro X Mobile — your CV and the target job, stored on this device.
+// Soro X Mobile: your CV and the target job, stored on this device.
 import { completeJson } from './ai';
 import type { Settings } from './settings';
 

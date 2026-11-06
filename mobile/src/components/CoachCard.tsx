@@ -1,5 +1,7 @@
 // The negotiation coach card (same content as the desktop's).
 import { useEffect, useState } from 'react';
+import { Handshake, Timer } from 'lucide-react';
+import { noEmDash } from './Markdown';
 import type { Coaching } from '../lib/negotiation';
 
 const PHASE: Record<string, string> = {
@@ -8,7 +10,7 @@ const PHASE: Record<string, string> = {
 const SILENCE = 6;
 
 export function money(n: number | null, cur: string) {
-  if (n === null) return '—';
+  if (n === null) return 'Not yet';
   try { if (/^[A-Z]{3}$/.test(cur)) return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n); } catch { /* unknown code */ }
   return n.toLocaleString();
 }
@@ -28,9 +30,9 @@ export function CoachCard({ c }: { c: Coaching }) {
   const gap = c.theirOffer !== null && c.yourTarget ? (c.theirOffer - c.yourTarget) / c.yourTarget : null;
   return (
     <div className="glass coach">
-      <div className="coach-head">🤝 Negotiation coach · {PHASE[c.phase] ?? c.phase}</div>
-      {c.tacticalNote && <b>{c.tacticalNote}</b>}
-      {c.exactScript && <blockquote><small>Say</small>“{c.exactScript}”</blockquote>}
+      <div className="coach-head"><Handshake size={14} aria-hidden /> Negotiation coach · {PHASE[c.phase] ?? c.phase}</div>
+      {c.tacticalNote && <b>{noEmDash(c.tacticalNote)}</b>}
+      {c.exactScript && <blockquote><small>Say</small>“{noEmDash(c.exactScript)}”</blockquote>}
       {(c.theirOffer !== null || c.yourTarget !== null) && (
         <div className="coach-nums">
           <span>Their number <b>{money(c.theirOffer, c.currency)}</b></span>
@@ -38,7 +40,7 @@ export function CoachCard({ c }: { c: Coaching }) {
           {gap !== null && <span className={gap >= 0 ? 'ok' : 'warn'}>{gap >= 0 ? 'At or above target' : `${Math.round(-gap * 100)}% below target`}</span>}
         </div>
       )}
-      {left > 0 && <div className="silence">⏱ Stay silent and let them answer… {left}s<i style={{ width: `${(left / SILENCE) * 100}%` }} /></div>}
+      {left > 0 && <div className="silence"><Timer size={14} aria-hidden /> Stay silent and let them answer… {left}s<i style={{ width: `${(left / SILENCE) * 100}%` }} /></div>}
     </div>
   );
 }

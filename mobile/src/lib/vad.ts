@@ -1,4 +1,4 @@
-// Soro X Mobile — microphone audio cut into utterances at natural pauses.
+// Soro X Mobile: microphone audio cut into utterances at natural pauses.
 //
 // A simple energy voice-activity detector with an adaptive noise floor: speech
 // starts when the level rises well above the room's background, and an

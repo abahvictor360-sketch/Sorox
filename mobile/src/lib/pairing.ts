@@ -1,4 +1,4 @@
-// Soro X Mobile — pairing with Soro X on your computer (Settings → Sync on the
+// Soro X Mobile: pairing with Soro X on your computer (Settings → Sync on the
 // desktop shows a QR code / link http://<computer-ip>:<port>/?t=<token>).
 // Same rules as the tablet companion (tablet/www/pairing.js): only links to a
 // computer on the local network are opened; there is no cloud relay.

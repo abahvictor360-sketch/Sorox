@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Settings } from '../lib/settings';
 import { isReady } from '../lib/settings';
+import { CircleCheck } from 'lucide-react';
 import { extractJob, extractResume, fileToText, type Profile } from '../lib/profile';
 
 export function ProfileScreen({ settings, profile, onChange }: { settings: Settings; profile: Profile; onChange: (p: Profile) => void }) {
@@ -43,14 +44,14 @@ export function ProfileScreen({ settings, profile, onChange }: { settings: Setti
       {err && <p className="error">{err}</p>}
       <div className="card">
         <h3>Your CV</h3>
-        {r && <p className="ok">✓ {r.name || 'CV'} — {r.headline} · {r.experience.length} roles · {r.skills.length} skills</p>}
+        {r && <p className="ok"><CircleCheck size={14} aria-hidden /> {r.name || 'CV'}, {r.headline} · {r.experience.length} roles · {r.skills.length} skills</p>}
         <label className="file">Choose PDF / Word / text<input type="file" accept=".pdf,.docx,.txt,.md,application/pdf" onChange={(e) => void readFile(e.target.files?.[0], setCvDraft)} /></label>
         <textarea rows={6} value={cvDraft} onChange={(e) => setCvDraft(e.target.value)} placeholder="…or paste your CV here" />
         <button className="primary" disabled={!!busy || cvDraft.trim() === profile.resumeText.trim() && !!r} onClick={() => void saveCv()}>{busy === 'cv' ? 'Reading your CV…' : 'Save CV'}</button>
       </div>
       <div className="card">
         <h3>The job</h3>
-        {j && <p className="ok">✓ {j.title}{j.company ? ` at ${j.company}` : ''} · {j.requirements.length} requirements</p>}
+        {j && <p className="ok"><CircleCheck size={14} aria-hidden /> {j.title}{j.company ? ` at ${j.company}` : ''} · {j.requirements.length} requirements</p>}
         <label className="file">Choose file<input type="file" accept=".pdf,.docx,.txt,.md,application/pdf" onChange={(e) => void readFile(e.target.files?.[0], setJobDraft)} /></label>
         <textarea rows={6} value={jobDraft} onChange={(e) => setJobDraft(e.target.value)} placeholder="Paste the job description" />
         <button className="primary" disabled={!!busy} onClick={() => void saveJob()}>{busy === 'job' ? 'Reading the job…' : 'Save job'}</button>

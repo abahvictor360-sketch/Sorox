@@ -1,4 +1,4 @@
-// Soro X Mobile — on-device Whisper (transformers.js + ONNX Runtime, WebAssembly).
+// Soro X Mobile: on-device Whisper (transformers.js + ONNX Runtime, WebAssembly).
 // The model and runtime download once, then are read from the browser cache:
 // transcription works offline and audio never leaves the phone.
 import { env, pipeline } from '@huggingface/transformers';

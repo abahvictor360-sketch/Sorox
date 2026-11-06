@@ -1,5 +1,5 @@
 /**
- * Soro X — Role Insight panel (Profile Intelligence → Role Insight).
+ * Soro X: Role Insight panel (Profile Intelligence → Role Insight).
  *
  * Shows how the résumé fits the job description (backend:
  * premium/electron/knowledge/roleInsight/RoleInsightService.ts) and, below it,

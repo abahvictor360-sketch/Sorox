@@ -1,10 +1,10 @@
 /**
- * Soro X — live negotiation coaching card, shown in the meeting chat when the
+ * Soro X: live negotiation coaching card, shown in the meeting chat when the
  * interviewer talks pay (engine: premium/electron/knowledge/LiveNegotiationCoach.ts,
  * rendered by src/components/NativelyInterface.tsx through src/premium/index.tsx).
  *
  * Shows the one move to make, the exact words to say, their number against
- * your target, and — after you state a number — a short "stay silent" timer.
+ * your target, and, after you state a number, a short "stay silent" timer.
  */
 import React, { useEffect, useState } from 'react';
 import { Copy, Handshake, Timer } from 'lucide-react';
@@ -34,8 +34,13 @@ const PHASE_LABEL: Record<string, string> = {
 
 export const SILENCE_SECONDS = 6;
 
+/** House style: no em dashes in what the user reads, even if the AI writes one. */
+export function noEmDash(text: string): string {
+    return text.replace(/\s*—\s*/g, ', ').replace(/^, |, $/g, '').trim();
+}
+
 export function formatMoney(n: number | null, currency: string): string {
-    if (n === null || !Number.isFinite(n)) return '—';
+    if (n === null || !Number.isFinite(n)) return 'Not yet';
     try {
         if (/^[A-Z]{3}$/.test(currency)) return new Intl.NumberFormat(undefined, { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
     } catch { /* unknown currency code */ }
@@ -83,13 +88,13 @@ export const NegotiationCoachingCard: React.FC<NegotiationCoachingCardProps> = (
                 <span>Negotiation coach · {PHASE_LABEL[phase] ?? phase}</span>
             </div>
 
-            {tacticalNote && <div style={{ fontWeight: 600 }}>{tacticalNote}</div>}
+            {tacticalNote && <div style={{ fontWeight: 600 }}>{noEmDash(tacticalNote)}</div>}
 
             {exactScript && (
                 <div style={{ background: c.quoteBg, borderLeft: `3px solid ${c.accent}`, borderRadius: 8, padding: '8px 10px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
                     <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 11, color: c.muted, marginBottom: 2 }}>Say</div>
-                        <div style={{ fontSize: 15 }}>“{exactScript}”</div>
+                        <div style={{ fontSize: 15 }}>“{noEmDash(exactScript)}”</div>
                     </div>
                     <button
                         type="button"

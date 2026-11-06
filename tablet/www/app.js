@@ -1,4 +1,4 @@
-// Soro X Tablet — pairing screen.
+// Soro X Tablet: pairing screen.
 //
 // Scans (or accepts a pasted) Soro X pairing link and opens the desktop's
 // companion page in this app. Back (Android) or a swipe from the left edge

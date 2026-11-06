@@ -968,7 +968,7 @@ export function initializeIpcHandlers(appState: AppState): void {
   };
 
   /**
-   * Soro X: may the user use the features Soro X provides itself — its own
+   * Soro X: may the user use the features Soro X provides itself: its own
    * premium/ engine (profile, company research, cover letter, negotiation
    * script, Role Insight) and the mode features whose code is public and runs
    * on the user's own AI key (modes, reference files, notes, mode summaries)? Natively's

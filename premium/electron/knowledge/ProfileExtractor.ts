@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — turns résumé / job-description text into structured facts.
+ * Soro X profile engine: turns résumé / job-description text into structured facts.
  *
  * Uses the app's own structured-generation ladder (the user's configured AI
  * provider) and falls back to a plain-text heuristic when no model answers, so an

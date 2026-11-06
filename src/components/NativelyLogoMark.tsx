@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Soro X logomark — an "X" crossing a ring.
+ * Soro X logomark: an "X" crossing a ring.
  * Rendered as inline SVG so it inherits `color` (currentColor) and
  * can be styled freely with className.
  *

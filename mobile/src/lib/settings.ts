@@ -1,4 +1,4 @@
-// Soro X Mobile — settings and keys, stored on this device only (WebView storage
+// Soro X Mobile: settings and keys, stored on this device only (WebView storage
 // is private to the app). Nothing is synced or sent anywhere.
 export type ProviderId = 'claude' | 'openai' | 'gemini' | 'groq' | 'openrouter' | 'nvidia';
 export type SttEngine = 'device' | 'whisper' | 'deepgram' | 'openai' | 'groq';

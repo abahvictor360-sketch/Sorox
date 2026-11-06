@@ -16,6 +16,8 @@ import { newSession, upsertSession, sessionTranscript, type Session } from '../l
 import { keepAwake } from '../lib/schedule';
 import type { ChatMessage } from '../lib/ai';
 import { Markdown } from '../components/Markdown';
+import { ModeIcon } from '../components/ModeIcon';
+import { ArrowUp, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Mic, Sparkles, Square, StickyNote } from 'lucide-react';
 import { CoachCard } from '../components/CoachCard';
 
 type ItemKind = 'answer' | 'action' | 'image' | 'chat' | 'coach' | 'note';
@@ -328,16 +330,16 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         </div>
         {shown.length > 1 && (
           <div className="gv-nav">
-            <button className="pill ghosty" disabled={idx <= 0} onClick={() => setGlassIdx(Math.max(0, idx - 1))}>‹ Earlier</button>
+            <button className="pill ghosty" disabled={idx <= 0} onClick={() => setGlassIdx(Math.max(0, idx - 1))}><ChevronLeft size={15} aria-hidden /> Earlier</button>
             <span className="muted small">{idx + 1} / {shown.length}</span>
-            <button className="pill ghosty" disabled={idx >= shown.length - 1} onClick={() => setGlassIdx(idx + 1 >= shown.length - 1 ? null : idx + 1)}>Later ›</button>
+            <button className="pill ghosty" disabled={idx >= shown.length - 1} onClick={() => setGlassIdx(idx + 1 >= shown.length - 1 ? null : idx + 1)}>Later <ChevronRight size={15} aria-hidden /></button>
           </div>
         )}
         {lastLine && <div className="gv-ticker">{lastLine}</div>}
         <div className="gv-controls">
           <button className="pill" disabled={noKey} onClick={() => doAction('what_to_say')}>What should I say?</button>
           <button className="pill" disabled={noKey} onClick={() => doAction('shorten')}>Shorten</button>
-          <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}>📷 Read screen</button>
+          <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}><Camera size={15} aria-hidden /> Read screen</button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void readScreen(e.target.files?.[0]); e.target.value = ''; }} />
         </div>
       </section>
@@ -351,14 +353,14 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         <button className={`pill status ${mic.listening ? `on ${standby ? 'standby' : who}` : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
           <span className="dot" />{status}
         </button>
-        <button className="pill" onClick={() => setModePicker(!modePicker)} aria-expanded={modePicker}>{mode.icon} {mode.label} ▾</button>
+        <button className="pill" onClick={() => setModePicker(!modePicker)} aria-expanded={modePicker}><ModeIcon id={mode.id} /> {mode.label} <ChevronDown size={14} aria-hidden /></button>
         <span className="grow" />
         {mic.listening && <span className="meter" aria-hidden><i style={{ transform: `scaleX(${Math.max(0.06, mic.level)})` }} /></span>}
         {!mic.listening && <button className="pill ghosty" onClick={() => void start({ standby: true })} title="Listen quietly and turn on by itself at the first question">Standby</button>}
         <button className="pill ghosty" onClick={() => setGlassMode(true)} title="Big translucent question and answer view">Glass</button>
         <button className="pill ghosty" onClick={() => void newConversation()} title="Start a new conversation">New</button>
         <button className={`mic ${mic.listening ? 'on' : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
-          {mic.listening ? '■' : '🎙'}
+          {mic.listening ? <Square size={16} fill="currentColor" aria-hidden /> : <Mic size={19} aria-hidden />}
         </button>
       </div>
 
@@ -366,7 +368,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         <div className="glass modes">
           {MODES.map((m) => (
             <button key={m.id} className={`mode ${m.id === settings.mode ? 'on' : ''}`} onClick={() => { onSettings({ ...settings, mode: m.id }); setModePicker(false); }}>
-              <span className="mi">{m.icon}</span><b>{m.label}</b><small>{m.blurb}</small>
+              <span className="mi"><ModeIcon id={m.id} size={20} /></span><b>{m.label}</b><small>{m.blurb}</small>
             </button>
           ))}
         </div>
@@ -381,7 +383,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
           <button className="pane-head" onClick={() => setShowTranscript(!showTranscript)}>
             <span>Transcript</span>
             <span className="legend"><i className="r-them" />Interviewer <i className="r-you" />You</span>
-            <span className="chev">{showTranscript ? '▾' : '▸'}</span>
+            <span className="chev">{showTranscript ? <ChevronDown size={15} aria-hidden /> : <ChevronRight size={15} aria-hidden />}</span>
           </button>
           <div className="lines" ref={transcriptRef}>
             {!segments.length && !mic.interim && (
@@ -408,9 +410,9 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
         <div className="feed" ref={feedRef}>
           {!items.length && (
             <div className="glass welcome">
-              <div className="wicon">✦</div>
+              <div className="wicon"><Sparkles size={24} aria-hidden /></div>
               <b>Answers appear here</b>
-              <p>When the interviewer asks a question, a suggested answer appears straight away{settings.autoAnswer ? '' : ' (auto-answer is off: tap a question or "What should I say?")'}. Use 📷 to answer a question shown on a screen.</p>
+              <p>When the interviewer asks a question, a suggested answer appears straight away{settings.autoAnswer ? '' : ' (auto-answer is off: tap a question or "What should I say?")'}. Use Read screen to answer a question shown on a screen.</p>
             </div>
           )}
           {items.map((it) => (
@@ -424,7 +426,7 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
                 </div>
               )}
               {it.kind === 'note' ? (
-                <div className="note-card">📝 {it.error ?? it.prompt}</div>
+                <div className="note-card"><StickyNote size={14} aria-hidden /> {it.error ?? it.prompt}</div>
               ) : it.kind === 'coach' && it.coaching ? (
                 <CoachCard c={it.coaching} />
               ) : (
@@ -443,19 +445,19 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
       <div className="glass dock">
         <div className="actions">
           {QUICK_ACTIONS.map((a) => <button key={a.id} className="pill" disabled={noKey} onClick={() => doAction(a.id)}>{a.label}</button>)}
-          <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}>📷 Read screen</button>
-          <button className="pill" onClick={() => setNoteDraft(noteDraft === null ? '' : null)}>📝 Note</button>
+          <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}><Camera size={15} aria-hidden /> Read screen</button>
+          <button className="pill" onClick={() => setNoteDraft(noteDraft === null ? '' : null)}><StickyNote size={15} aria-hidden /> Note</button>
         </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void readScreen(e.target.files?.[0]); e.target.value = ''; }} />
         {noteDraft !== null ? (
           <form className="askbar" onSubmit={(e) => { e.preventDefault(); saveNote(noteDraft); setNoteDraft(null); }}>
             <input autoFocus value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Write a note (saved to Notes)…" />
-            <button className="send" disabled={!noteDraft.trim()} aria-label="Save note">✓</button>
+            <button className="send" disabled={!noteDraft.trim()} aria-label="Save note"><Check size={18} aria-hidden /></button>
           </form>
         ) : (
           <form className="askbar" onSubmit={(e) => { e.preventDefault(); ask(typed); setTyped(''); }}>
             <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={noKey ? 'Add an AI key to ask' : 'Ask anything, or paste a question…'} disabled={noKey} />
-            <button className="send" disabled={!typed.trim() || noKey} aria-label="Send">↑</button>
+            <button className="send" disabled={!typed.trim() || noKey} aria-label="Send"><ArrowUp size={18} aria-hidden /></button>
           </form>
         )}
       </div>

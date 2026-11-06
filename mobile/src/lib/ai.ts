@@ -1,4 +1,4 @@
-// Soro X Mobile — one streaming call over the user's own AI provider.
+// Soro X Mobile: one streaming call over the user's own AI provider.
 //
 // Claude goes through the official Anthropic SDK; OpenAI, Gemini, Groq, OpenRouter
 // and NVIDIA through their HTTP APIs. Keys live only on this device (see
@@ -85,6 +85,8 @@ export async function complete(settings: Settings, req: CompleteRequest): Promis
   const key = settings.keys[provider]?.trim();
   if (!key) throw new AiError(`Add your ${PROVIDERS[provider].label} key in Settings first.`, provider);
   const model = modelFor(settings, provider);
+  // House style for everything the AI writes in the app.
+  req = { ...req, system: `${req.system}\n\nWriting style: never use em dashes (—). Use commas, colons, brackets or full stops instead.` };
   let full = '';
   const emit = (d: string) => { if (!d) return; full += d; req.onText?.(d, full); };
   if (provider === 'claude') await streamClaude(key, model, req, emit);

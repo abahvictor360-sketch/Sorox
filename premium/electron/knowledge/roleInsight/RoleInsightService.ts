@@ -1,5 +1,5 @@
 /**
- * Soro X — Role Insight: how well the résumé fits the job description.
+ * Soro X: Role Insight: how well the résumé fits the job description.
  *
  * One AI call reads both documents and grades every job requirement against the
  * résumé (strong / partial / gap) with the résumé evidence, then adds talking

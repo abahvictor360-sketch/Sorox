@@ -1,5 +1,5 @@
 /**
- * Soro X profile engine — storage for the active résumé and job description.
+ * Soro X profile engine: storage for the active résumé and job description.
  *
  * Constructed by electron/main.ts with the app's better-sqlite3 handle (the same
  * connection DatabaseManager uses), so profile:delete's runInTransaction() covers

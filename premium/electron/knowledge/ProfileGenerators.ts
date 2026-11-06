@@ -1,5 +1,5 @@
 /**
- * Soro X — documents written from the résumé + job description with the
+ * Soro X: documents written from the résumé + job description with the
  * user's own AI provider: a cover letter (Cover Letter screen) and a salary
  * negotiation script (profile:generate-negotiation).
  */

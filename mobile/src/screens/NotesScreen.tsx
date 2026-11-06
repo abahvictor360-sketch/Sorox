@@ -8,6 +8,8 @@ import type { Profile } from '../lib/profile';
 import { MODES, writeNotes } from '../lib/interview';
 import { deleteSession, loadSessions, sessionToText, sessionTranscript, upsertSession, type Session } from '../lib/sessions';
 import { Markdown } from '../components/Markdown';
+import { ModeIcon } from '../components/ModeIcon';
+import { ArrowLeft, FileText, Share2, Trash2 } from 'lucide-react';
 
 export function NotesScreen({ settings, profile, version }: { settings: Settings; profile: Profile; version: number }) {
   const [list, setList] = useState<Session[]>(() => loadSessions());
@@ -43,12 +45,12 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
     const mode = MODES.find((m) => m.id === open.mode);
     return (
       <section>
-        <div className="row"><button className="ghost" onClick={() => setOpenId(null)}>← All notes</button><span className="grow" />
-          <button className="ghost small" onClick={() => void share(open)}>Share</button>
-          <button className="ghost small danger-text" onClick={() => { if (confirm('Delete this session?')) { setList(deleteSession(open.id)); setOpenId(null); } }}>Delete</button>
+        <div className="row"><button className="ghost" onClick={() => setOpenId(null)}><ArrowLeft size={16} aria-hidden /> All notes</button><span className="grow" />
+          <button className="ghost small" onClick={() => void share(open)}><Share2 size={14} aria-hidden /> Share</button>
+          <button className="ghost small danger-text" onClick={() => { if (confirm('Delete this session?')) { setList(deleteSession(open.id)); setOpenId(null); } }}><Trash2 size={14} aria-hidden /> Delete</button>
         </div>
         <input className="title-input" value={open.title} onChange={(e) => update({ ...open, title: e.target.value })} aria-label="Title" />
-        <p className="muted small">{mode?.icon} {mode?.label} · {new Date(open.startedAt).toLocaleString()} · {open.lines.length} lines · {open.answers.length} answers</p>
+        <p className="muted small">{mode && <ModeIcon id={mode.id} size={13} />} {mode?.label} · {new Date(open.startedAt).toLocaleString()} · {open.lines.length} lines · {open.answers.length} answers</p>
         <div className="seg-ctl">
           {(['notes', 'answers', 'transcript'] as const).map((t) => <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>{t === 'notes' ? 'Notes' : t === 'answers' ? 'Answers' : 'Transcript'}</button>)}
         </div>
@@ -86,9 +88,9 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
       <input className="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search notes and transcripts" />
       {!list.length && (
         <div className="glass card center">
-          <div className="wicon">📝</div>
+          <div className="wicon"><FileText size={24} aria-hidden /></div>
           <b>No notes yet</b>
-          <p className="muted">Every time you listen in Live, the conversation is saved here with notes written for you. Add your own with 📝 Note while listening.</p>
+          <p className="muted">Every time you listen in Live, the conversation is saved here with notes written for you. Add your own with Note while listening.</p>
         </div>
       )}
       <div className="grid">
@@ -98,7 +100,7 @@ export function NotesScreen({ settings, profile, version }: { settings: Settings
           return (
             <button key={s.id} className="glass card tile" onClick={() => { setOpenId(s.id); setTab('notes'); }}>
               <b>{s.title}</b>
-              <span className="muted small">{mode?.icon} {mode?.label} · {s.answers.length} answers{s.notes ? ' · notes ready' : ''}</span>
+              <span className="muted small">{mode && <ModeIcon id={mode.id} size={13} />} {mode?.label} · {s.answers.length} answers{s.notes ? ' · notes ready' : ''}</span>
               <span className="preview">{preview || 'Empty session'}</span>
             </button>
           );
