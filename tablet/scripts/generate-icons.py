@@ -1,4 +1,4 @@
-"""Usage: python3 tablet/scripts/generate-icons.py  (needs Pillow)
+"""Usage: python3 tablet/scripts/generate-icons.py [app-folder]  (needs Pillow; default: tablet/)
 
 Draws the Soro X Tablet app icons and splash screens for Android and iOS from
 the same logo code as the desktop app (scripts/generate-sorox-logo.py), and
@@ -7,12 +7,14 @@ overwrites the Capacitor placeholders at the sizes Capacitor generated.
 import glob
 import importlib.util
 import os
+import sys
 
 from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TABLET = os.path.dirname(HERE)
-spec = importlib.util.spec_from_file_location("sorox_logo", os.path.join(TABLET, "..", "scripts", "generate-sorox-logo.py"))
+# Optional argument: another Capacitor app folder to draw icons for (e.g. mobile/).
+TABLET = os.path.abspath(sys.argv[1]) if len(sys.argv) > 1 else os.path.dirname(HERE)
+spec = importlib.util.spec_from_file_location("sorox_logo", os.path.join(HERE, "..", "..", "scripts", "generate-sorox-logo.py"))
 logo = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(logo)  # defines the drawing helpers; generation only runs under __main__
 

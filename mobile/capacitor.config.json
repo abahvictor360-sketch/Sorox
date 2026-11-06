@@ -1,0 +1,10 @@
+{
+  "appId": "app.sorox.mobile",
+  "appName": "Soro X",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "allowNavigation": ["192.168.*.*", "10.*.*.*", "172.*.*.*", "169.254.*.*", "*.local"]
+  },
+  "ios": { "contentInset": "never" }
+}

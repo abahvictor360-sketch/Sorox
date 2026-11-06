@@ -1,0 +1,108 @@
+name: Soro X Mobile apps
+
+# Builds the Android APK and the iPad app for mobile/ (Capacitor).
+# Download the results from the run's "Artifacts" section.
+on:
+  push:
+    paths:
+      - 'mobile/**'
+      - 'scripts/generate-sorox-logo.py'
+      - 'tablet/scripts/generate-icons.py'
+      - '.github/workflows/mobile-apps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-apps-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  web:
+    name: Unit tests and web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  android:
+    name: Android APK
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      # The ubuntu runner ships the Android SDK (ANDROID_HOME) with licences
+      # accepted; Gradle installs any missing platform/build-tools itself.
+      - name: Android SDK
+        run: echo "ANDROID_HOME=$ANDROID_HOME" && test -d "$ANDROID_HOME"
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync android
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soro-x-mobile-android-apk
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+  ios:
+    name: iPhone / iPad app
+    needs: web
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap sync ios
+      - name: Build for the iOS simulator (compile check)
+        working-directory: mobile/ios/App
+        run: >
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug
+          -sdk iphonesimulator -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO build
+      - name: Build for iOS devices (unsigned)
+        working-directory: mobile/ios/App
+        run: >
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release
+          -sdk iphoneos -destination 'generic/platform=iOS'
+          -derivedDataPath build/device CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+      - name: Package unsigned .ipa
+        working-directory: mobile/ios/App
+        run: |
+          mkdir -p Payload
+          cp -R build/device/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qry SoroX-Mobile-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: soro-x-mobile-ios-unsigned-ipa
+          path: mobile/ios/App/SoroX-Mobile-unsigned.ipa
+          if-no-files-found: error

@@ -1,0 +1,36 @@
+{
+  "name": "sorox-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Soro X Mobile: interview assistant for Android (and iPad/iPhone) on your own AI key; also pairs with Soro X on your computer.",
+  "license": "SEE LICENSE IN ../LICENSE",
+  "scripts": {
+    "dev": "node scripts/copy-pdf-worker.mjs && vite",
+    "build": "node scripts/copy-pdf-worker.mjs && tsc --noEmit && vite build",
+    "test": "vitest run",
+    "sync": "npm run build && npx cap sync",
+    "android:apk": "npm run sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
+    "@capacitor-community/speech-recognition": "^7.0.1",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/ios": "^8.5.3",
+    "jsqr": "^1.4.0",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.5.438",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}
