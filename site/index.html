@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Soro X — Download</title>
-  <meta name="description" content="Soro X: an AI meeting and interview assistant for Windows and Mac that runs on your computer with your own AI key. Tablet companion for Android and iPad." />
+  <meta name="description" content="Soro X: an AI meeting and interview assistant for Windows and Mac that runs on your computer with your own AI key. Soro X Mobile: an interview assistant for Android and iPhone on your own AI key. Tablet companion for Android and iPad." />
   <meta name="theme-color" content="#1E1B4B" />
   <link rel="icon" href="favicon.png" type="image/png" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
@@ -19,6 +19,7 @@
     <nav>
       <a href="#download">Download</a>
       <a href="#setup">Set up</a>
+      <a href="#mobile">Phone</a>
       <a href="#tablet">Tablet</a>
       <a href="#faq">FAQ</a>
     </nav>
@@ -40,6 +41,7 @@
       <div><h3>Live answers</h3><p>Transcribes the conversation and suggests what to say next, in an overlay on your screen.</p></div>
       <div><h3>Your profile</h3><p>Upload your CV and a job description. Answers, cover letters and Role Insight use your real experience.</p></div>
       <div><h3>Company Intel</h3><p>A research brief on the company you're meeting: culture, interviews, salary ranges and news.</p></div>
+      <div><h3>Negotiation coach</h3><p>When pay comes up in the call, it tells you the move to make and the exact words to say.</p></div>
       <div><h3>Your key, your machine</h3><p>Works with Gemini, OpenAI, Claude, Groq or a free local model via Ollama. No account needed.</p></div>
     </section>
 
@@ -58,6 +60,18 @@
           <a class="button primary" data-asset="SoroX-macOS-AppleSilicon.dmg">Apple Silicon (M1–M4)</a>
           <a class="button" data-asset="SoroX-macOS-Intel.dmg">Intel</a>
           <p class="hint">Not sure? Apple menu → About This Mac: "Chip: Apple M…" means Apple Silicon.</p>
+        </article>
+        <article class="card" data-os="android-phone">
+          <h3>Android phone</h3>
+          <p class="muted">Soro X Mobile: interview assistant on its own</p>
+          <a class="button primary" data-asset="SoroX-Android.apk">Download APK</a>
+          <p class="hint">Works on tablets too. Open the file and allow "Install unknown apps" when asked.</p>
+        </article>
+        <article class="card" data-os="iphone">
+          <h3>iPhone</h3>
+          <p class="muted">Soro X Mobile: interview assistant on its own</p>
+          <a class="button" data-asset="SoroX-iPhone-unsigned.ipa">Download .ipa (unsigned)</a>
+          <p class="hint">Sign it with your Apple ID using AltStore or Sideloadly, or build it in Xcode from the <a href="https://github.com/abahvictor360-sketch/Sorox/tree/ccr-efd251da-957okn/mobile">source</a>.</p>
         </article>
         <article class="card" data-os="android">
           <h3>Android tablet</h3>
@@ -102,6 +116,18 @@
           <p>Open <b>Profile Intelligence</b> → <b>Use Soro X profile engine</b>, upload your CV (and a job description), then in <b>Modes</b> switch to <b>Looking for work</b>.</p>
         </li>
       </ol>
+    </section>
+
+    <section id="mobile" class="block">
+      <h2>On your phone: Soro X Mobile</h2>
+      <p>A full interview assistant that runs on the phone with your own AI key (Claude, OpenAI, Gemini or Groq). No computer needed.</p>
+      <ul class="compact">
+        <li><b>Live:</b> listens to the interview, spots the questions and drafts an answer from your CV and the job.</li>
+        <li><b>Practice:</b> a mock interviewer for your target job. Answer out loud and get a score, what to fix and a stronger answer.</li>
+        <li><b>Prep:</b> "Tell me about yourself", likely questions, role fit, STAR stories, company brief, questions to ask, a salary script and a cover letter.</li>
+        <li><b>Connect to your computer:</b> opens Soro X's phone view over Wi-Fi, like the tablet app.</li>
+      </ul>
+      <p class="muted small">Your keys, CV and documents stay on the phone and go only to the AI and speech services you choose.</p>
     </section>
 
     <section id="tablet" class="block">

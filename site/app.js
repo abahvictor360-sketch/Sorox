@@ -12,13 +12,17 @@
   const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
   const isIPad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/.test(ua);
+  const isIPhone = /iPhone|iPod/.test(ua);
+  // Android tablets drop "Mobile" from the user agent.
+  const isAndroidTablet = isAndroid && !/Mobile/.test(ua);
   const isMac = !isIPad && /Mac/i.test(platform + ua);
   const isWindows = /Win/i.test(platform + ua);
 
   const primary = document.getElementById('primary-download');
   const pick = (label, asset) => { primary.textContent = label; primary.href = DOWNLOAD(asset); };
   if (isWindows) pick('Download for Windows', 'SoroX-Windows-Setup.exe');
-  else if (isAndroid) pick('Download for Android tablet', 'SoroX-Tablet-Android.apk');
+  else if (isAndroid) pick('Download for Android', 'SoroX-Android.apk');
+  else if (isIPhone) { primary.textContent = 'Get the iPhone app'; primary.href = '#download'; }
   else if (isIPad) { primary.textContent = 'Get the iPad app'; primary.href = '#download'; }
   else if (isMac) {
     pick('Download for Mac (Apple Silicon)', 'SoroX-macOS-AppleSilicon.dmg');
@@ -27,7 +31,7 @@
       .then((v) => { if (v.architecture === 'x86') pick('Download for Mac (Intel)', 'SoroX-macOS-Intel.dmg'); })
       .catch(() => {});
   }
-  const mine = isWindows ? 'windows' : isAndroid ? 'android' : isIPad ? 'ipad' : isMac ? 'mac' : null;
+  const mine = isWindows ? 'windows' : isAndroidTablet ? 'android' : isAndroid ? 'android-phone' : isIPhone ? 'iphone' : isIPad ? 'ipad' : isMac ? 'mac' : null;
   if (mine) document.querySelector(`.card[data-os="${mine}"]`)?.classList.add('yours');
 
   // ── Release check: version line, and no links to files that do not exist yet ──
