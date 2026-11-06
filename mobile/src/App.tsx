@@ -6,7 +6,7 @@ import { NotesScreen } from './screens/NotesScreen';
 import { PracticeScreen } from './screens/PracticeScreen';
 import { PrepScreen } from './screens/PrepScreen';
 import { MeScreen, type MeTab } from './screens/MeScreen';
-import { current, loadSchedule, onAppointmentOpened } from './lib/schedule';
+import { onAppointmentOpened, takeDueAppointment } from './lib/schedule';
 import { Icon } from './components/Icon';
 import { Capacitor } from '@capacitor/core';
 
@@ -34,20 +34,23 @@ export default function App() {
   // Turn itself on: when the app opens (setting), when an interview on the
   // schedule is happening now, or when its "starting" notification is tapped.
   useEffect(() => {
-    const appt = current(loadSchedule());
-    if (appt) startLive(appt.mode);
+    // A scheduled interview that has started (and was not started before).
+    const due = takeDueAppointment();
+    if (due) startLive(due.mode);
     else if (loadSettings().autoListen) startLive(undefined, loadSettings().standby);
+    // While the app is open, start on time without needing the notification.
+    const timer = window.setInterval(() => { const d = takeDueAppointment(); if (d) startLive(d.mode); }, 15_000);
     let off: (() => void) | undefined;
     void onAppointmentOpened((mode, auto) => { if (auto) startLive(mode); else setTab('prep'); }).then((f) => { off = f; });
     // Coming back to the app during a scheduled interview starts listening too.
     let offResume: (() => void) | undefined;
     if (Capacitor.isNativePlatform()) {
       void import('@capacitor/app').then(({ App: CapApp }) => CapApp.addListener('resume', () => {
-        const now = current(loadSchedule());
-        if (now) startLive(now.mode);
+        const d = takeDueAppointment();
+        if (d) startLive(d.mode);
       })).then((h) => { offResume = () => void h.remove(); }).catch(() => {});
     }
-    return () => { off?.(); offResume?.(); };
+    return () => { window.clearInterval(timer); off?.(); offResume?.(); };
   }, [startLive]);
 
   const needsKey = !isReady(settings);

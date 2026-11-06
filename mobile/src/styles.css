@@ -245,3 +245,6 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .chip .ico, .pill .ico { color: var(--accent-2); }
 .chip.on .ico { color: #fff; }
 .mic svg, .send svg { flex: none; }
+.status-card.s-on svg { color: var(--ok); }
+.status-card.s-off svg, .status-card.s-error svg { color: var(--danger); }
+.status-card.s-late svg, .status-card.s-browser svg { color: var(--warn); }
