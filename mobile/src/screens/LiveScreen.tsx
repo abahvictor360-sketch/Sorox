@@ -6,8 +6,8 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardR
 import type { ModeId, Settings } from '../lib/settings';
 import { isReady } from '../lib/settings';
 import type { Profile } from '../lib/profile';
-import { MODES, QUICK_ACTIONS, SKIP, answerFromImage, answerQuestion, chat, modeOf, quickAction, writeNotes, type QuickAction } from '../lib/interview';
-import { Conversation, type Role, type Segment } from '../lib/conversation';
+import { MODES, QUICK_ACTIONS, SKIP, looksLikeQuestion, answerFromImage, answerQuestion, chat, modeOf, quickAction, writeNotes, type QuickAction } from '../lib/interview';
+import { Conversation, firstPersonRatio, type Role, type Segment } from '../lib/conversation';
 import { NegotiationConversationTracker, detectPhase, textHasCompEvidence } from '../lib/negotiationTracker';
 import { coach, type Coaching } from '../lib/negotiation';
 import { useTranscriber } from '../lib/useTranscriber';
@@ -34,7 +34,7 @@ interface Item {
 
 export interface LiveHandle {
   /** Start listening (from a notification, the schedule or "listen on open"). */
-  startListening: (mode?: ModeId) => void;
+  startListening: (mode?: ModeId, opts?: { standby?: boolean }) => void;
 }
 
 interface Props {
@@ -60,6 +60,12 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   const [modePicker, setModePicker] = useState(false);
   const [noteDraft, setNoteDraft] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  // Glass view: big, translucent question + answer, for a tablet on a stand or split screen.
+  const [glass, setGlass] = useState(() => { try { return localStorage.getItem('sorox.mobile.glass') === '1'; } catch { return false; } });
+  const [glassIdx, setGlassIdx] = useState<number | null>(null);
+  const [glassSize, setGlassSize] = useState(() => { try { return Number(localStorage.getItem('sorox.mobile.glassSize')) || 22; } catch { return 22; } });
+  const setGlassMode = (on: boolean) => { setGlass(on); setGlassIdx(null); try { localStorage.setItem('sorox.mobile.glass', on ? '1' : '0'); } catch { /* ignore */ } };
+  useEffect(() => { try { localStorage.setItem('sorox.mobile.glassSize', String(glassSize)); } catch { /* ignore */ } }, [glassSize]);
   const session = useRef<Session | null>(null);
   const controllers = useRef(new Map<number, AbortController>());
   const debounce = useRef<number | null>(null);
@@ -141,8 +147,8 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   }, [conv, tracker, answer]);
 
   // ── Transcript in ──
-  const onFinal = useCallback((text: string, meta?: { speaker?: number }) => {
-    const seg = conv.add(text, Date.now(), meta?.speaker);
+  const process = useCallback((text: string, speaker?: number, at = Date.now()) => {
+    const seg = conv.add(text, at, speaker);
     setSegments([...conv.segments]);
     const s = ensureSession();
     s.lines.push({ text: seg.text, role: seg.role, at: seg.at });
@@ -157,6 +163,25 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
     }
   }, [conv, tracker, ensureSession, saveSession, answerPending]);
 
+  // Standby: the mic is on but nothing is kept until the first question is
+  // heard; then Soro X turns itself on (session, transcript, answers) with the
+  // last few lines as context.
+  const [standby, setStandby] = useState(false);
+  const standbyRef = useRef(false);
+  const standbyBuf = useRef<{ text: string; speaker?: number; at: number }[]>([]);
+  const onFinal = useCallback((text: string, meta?: { speaker?: number }) => {
+    if (standbyRef.current) {
+      const now = Date.now();
+      standbyBuf.current = [...standbyBuf.current, { text, speaker: meta?.speaker, at: now }].filter((l) => now - l.at < 60_000).slice(-4);
+      if (!(looksLikeQuestion(text) && firstPersonRatio(text) < 0.15)) return;
+      standbyRef.current = false; setStandby(false);
+      const buf = standbyBuf.current; standbyBuf.current = [];
+      for (const l of buf) process(l.text, l.speaker, l.at);
+      return;
+    }
+    process(text, meta?.speaker);
+  }, [process]);
+
   const mic = useTranscriber(settings, onFinal);
 
   // Automated UI tests feed speech here (only when a test page sets the flag).
@@ -164,16 +189,20 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
     const w = window as any;
     if (!w.__SOROX_TEST__) return;
     w.__soroxHear = (text: string, speaker?: number) => onFinal(text, { speaker });
-    return () => { delete w.__soroxHear; };
+    w.__soroxStop = () => stopRef.current?.();
+    return () => { delete w.__soroxHear; delete w.__soroxStop; };
   }, [onFinal]);
+  const stopRef = useRef<(() => Promise<void>) | null>(null);
 
-  const start = useCallback(async () => {
-    ensureSession();
+  const start = useCallback(async (opts: { standby?: boolean } = {}) => {
+    standbyRef.current = !!opts.standby; setStandby(!!opts.standby); standbyBuf.current = [];
+    if (!opts.standby) ensureSession();
     await mic.start();
     if (settingsRef.current.keepAwake) void keepAwake(true);
   }, [mic, ensureSession]);
 
   const stop = useCallback(async () => {
+    standbyRef.current = false; setStandby(false);
     await mic.stop();
     void keepAwake(false);
     const s = session.current;
@@ -190,6 +219,8 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
     }
   }, [mic, conv, saveSession, onSessionSaved]);
 
+  stopRef.current = stop;
+
   const newConversation = useCallback(async () => {
     if (mic.listening) await stop();
     for (const c of controllers.current.values()) c.abort();
@@ -199,9 +230,10 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   }, [mic.listening, stop, conv, tracker]);
 
   useImperativeHandle(ref, () => ({
-    startListening: (mode) => {
+    startListening: (mode, opts) => {
       if (mode && mode !== settingsRef.current.mode) onSettings({ ...settingsRef.current, mode });
-      if (!mic.listening) void start();
+      if (!mic.listening) void start(opts);
+      else if (!opts?.standby && standbyRef.current) { standbyRef.current = false; setStandby(false); }
     },
   }), [mic.listening, start, onSettings]);
 
@@ -260,20 +292,70 @@ export const LiveScreen = forwardRef<LiveHandle, Props>(function LiveScreen({ se
   useEffect(() => () => { for (const c of controllers.current.values()) c.abort(); }, []);
 
   const who = mic.listening ? conv.state(now) : 'idle';
-  const status = !mic.listening ? 'Ready' : who === 'them' ? 'Interviewer speaking' : who === 'you' ? "You're answering" : 'Listening';
+  const status = !mic.listening ? 'Ready' : standby ? 'Standby · waiting for a question' : who === 'them' ? 'Interviewer speaking' : who === 'you' ? "You're answering" : 'Listening';
   const mode = modeOf(settings);
   const noKey = !isReady(settings);
+
+  if (glass) {
+    const shown = items.filter((i) => i.kind !== 'note');
+    const idx = glassIdx === null ? shown.length - 1 : Math.min(glassIdx, shown.length - 1);
+    const cur = shown[idx];
+    const lastLine = mic.interim || segments[segments.length - 1]?.text || '';
+    return (
+      <section className="glass-view" style={{ ['--gv-size' as any]: `${glassSize}px` }}>
+        <div className="gv-top">
+          <button className={`pill status ${mic.listening ? `on ${standby ? 'standby' : who}` : ''}`} onClick={() => (mic.listening ? void stop() : void start())}>
+            <span className="dot" />{status}
+          </button>
+          <span className="grow" />
+          <button className="pill ghosty" aria-label="Smaller text" onClick={() => setGlassSize((n) => Math.max(14, n - 2))}>A−</button>
+          <button className="pill ghosty" aria-label="Larger text" onClick={() => setGlassSize((n) => Math.min(34, n + 2))}>A+</button>
+          <button className="pill" onClick={() => setGlassMode(false)}>Exit glass</button>
+        </div>
+        <div className="gv-main">
+          {cur ? (
+            <>
+              <div className="gv-q">{cur.kind === 'answer' ? (cur.auto ? 'Heard: ' : 'Asked: ') : ''}{cur.prompt}</div>
+              <div className="gv-a">
+                {cur.error ? <p className="error">{cur.error}</p>
+                  : cur.kind === 'coach' && cur.coaching ? <CoachCard c={cur.coaching} />
+                  : cur.text ? <Markdown text={cur.text} /> : <div className="typing"><i /><i /><i /></div>}
+              </div>
+            </>
+          ) : (
+            <div className="gv-empty">{mic.listening ? (standby ? 'On standby. Turns on at the first question.' : 'Listening. Questions and answers appear here, large.') : 'Tap the status to start listening.'}</div>
+          )}
+        </div>
+        {shown.length > 1 && (
+          <div className="gv-nav">
+            <button className="pill ghosty" disabled={idx <= 0} onClick={() => setGlassIdx(Math.max(0, idx - 1))}>‹ Earlier</button>
+            <span className="muted small">{idx + 1} / {shown.length}</span>
+            <button className="pill ghosty" disabled={idx >= shown.length - 1} onClick={() => setGlassIdx(idx + 1 >= shown.length - 1 ? null : idx + 1)}>Later ›</button>
+          </div>
+        )}
+        {lastLine && <div className="gv-ticker">{lastLine}</div>}
+        <div className="gv-controls">
+          <button className="pill" disabled={noKey} onClick={() => doAction('what_to_say')}>What should I say?</button>
+          <button className="pill" disabled={noKey} onClick={() => doAction('shorten')}>Shorten</button>
+          <button className="pill" disabled={noKey} onClick={() => fileRef.current?.click()}>📷 Read screen</button>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { void readScreen(e.target.files?.[0]); e.target.value = ''; }} />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="live">
       {/* Status bar */}
       <div className="glass bar">
-        <button className={`pill status ${mic.listening ? `on ${who}` : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
+        <button className={`pill status ${mic.listening ? `on ${standby ? 'standby' : who}` : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
           <span className="dot" />{status}
         </button>
         <button className="pill" onClick={() => setModePicker(!modePicker)} aria-expanded={modePicker}>{mode.icon} {mode.label} ▾</button>
         <span className="grow" />
         {mic.listening && <span className="meter" aria-hidden><i style={{ transform: `scaleX(${Math.max(0.06, mic.level)})` }} /></span>}
+        {!mic.listening && <button className="pill ghosty" onClick={() => void start({ standby: true })} title="Listen quietly and turn on by itself at the first question">Standby</button>}
+        <button className="pill ghosty" onClick={() => setGlassMode(true)} title="Big translucent question and answer view">Glass</button>
         <button className="pill ghosty" onClick={() => void newConversation()} title="Start a new conversation">New</button>
         <button className={`mic ${mic.listening ? 'on' : ''}`} onClick={() => (mic.listening ? void stop() : void start())} aria-label={mic.listening ? 'Stop listening' : 'Start listening'}>
           {mic.listening ? '■' : '🎙'}

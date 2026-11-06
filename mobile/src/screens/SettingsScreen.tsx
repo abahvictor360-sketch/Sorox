@@ -103,6 +103,7 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
       <div className="card">
         <h3>Automatic start</h3>
         <label className="toggle"><input type="checkbox" checked={settings.autoListen} onChange={(e) => set({ autoListen: e.target.checked })} /> <span>Start listening as soon as Soro X opens</span></label>
+        <label className="toggle"><input type="checkbox" checked={settings.standby} onChange={(e) => set({ standby: e.target.checked })} /> <span>…on standby: wait quietly and turn on by itself when the first question is heard<br /><small>Nothing is saved or sent for answers until then. Also available as the Standby button in Live.</small></span></label>
         <label className="toggle"><input type="checkbox" checked={settings.keepAwake} onChange={(e) => set({ keepAwake: e.target.checked })} /> <span>Keep the screen on while listening</span></label>
         <p className="muted small">Add your interviews under Me → Schedule: at the start time a notification opens Soro X and starts listening.</p>
       </div>

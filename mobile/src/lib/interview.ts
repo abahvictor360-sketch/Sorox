@@ -53,13 +53,15 @@ function modeContext(settings: Settings, profile: Profile): string {
 
 export const SKIP = '[[SKIP]]';
 
-const ANSWER_SYSTEM = (settings: Settings) => {
+const ANSWER_SYSTEM = (settings: Settings, allowSkip = true) => {
   const mode = modeOf(settings);
   return `You help ${mode.role} in real time. They glance at your text and say it in their own words.
 
 The transcript comes from one microphone and labels each line Interviewer / Candidate / Speaker (unsure); the labels can be wrong. "The candidate" below means the user you help.
 
-First decide: is the latest line a question or request that the candidate should answer now? If it is the candidate speaking (answering, thinking aloud, or asking the other side their own question), or it is small talk that needs no help, reply with exactly ${SKIP} and nothing else.
+${allowSkip
+    ? `First decide: is the latest line a question or request that the candidate should answer now? If it is the candidate speaking (answering, thinking aloud, or asking the other side their own question), or it is small talk that needs no help, reply with exactly ${SKIP} and nothing else.`
+    : 'The candidate picked the latest line themselves: always help with it, even if it is small talk or a statement (then suggest a good reply).'}
 
 Otherwise answer it. Rules:
 - Answer as the candidate, in the first person${mode.usesProfile ? ', using ONLY facts from <candidate> / <candidate_cv>, <target_job> and <candidate_notes>. Never invent employers, numbers, dates or skills. If the profile does not cover something, give an honest, general answer and say what to emphasise instead' : ''}.
@@ -87,7 +89,7 @@ Latest line${opts.allowSkip === false ? ' (the candidate asked for help with thi
   // Hold back the first characters until we know the reply is not a skip.
   let shown = false;
   const out = await complete(settings, {
-    system: ANSWER_SYSTEM(settings),
+    system: ANSWER_SYSTEM(settings, opts.allowSkip !== false),
     messages: [{ role: 'user', content }],
     effort: 'low',
     maxTokens: 2000,
@@ -104,7 +106,7 @@ Latest line${opts.allowSkip === false ? ' (the candidate asked for help with thi
     },
     signal,
   });
-  return out.trim().startsWith(SKIP) ? SKIP : out;
+  return out.trim().startsWith(SKIP) && opts.allowSkip !== false ? SKIP : out.replace(SKIP, '').trim();
 }
 
 // ─── Quick actions (the desktop's buttons) ──────────────────────────────────
@@ -156,7 +158,7 @@ export async function answerFromImage(
   onText: (delta: string, full: string) => void, signal?: AbortSignal,
 ): Promise<string> {
   return complete(settings, {
-    system: `${ANSWER_SYSTEM(settings).split('First decide:')[0]}The image is a photo of a screen, whiteboard or paper. Find the question(s) or task on it (a coding problem, a multiple-choice question, an interview prompt, a form…) and answer them.
+    system: `${ANSWER_SYSTEM(settings, false).split('The candidate picked')[0]}The image is a photo of a screen, whiteboard or paper. Find the question(s) or task on it (a coding problem, a multiple-choice question, an interview prompt, a form…) and answer them.
 Start with the question you found in one italic line (*Question: …*), then the answer. For multiple choice, give the letter and a one-line reason. For code, give working code in a fenced block, then complexity. If no question is visible, say what you see and what you can help with.`,
     messages: [{ role: 'user', content: `${modeContext(settings, profile)}\n\nConversation so far:\n${transcript || '(none)'}\n\nAnswer the question in this image.`, images: [image] }],
     effort: 'medium',

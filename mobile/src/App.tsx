@@ -29,14 +29,14 @@ export default function App() {
 
   const setSettings = useCallback((s: Settings) => { setSettingsState(s); saveSettings(s); }, []);
   const setProfile = useCallback((p: Profile) => { setProfileState(p); saveProfile(p); }, []);
-  const startLive = useCallback((mode?: ModeId) => { setTab('live'); window.setTimeout(() => live.current?.startListening(mode), 50); }, []);
+  const startLive = useCallback((mode?: ModeId, standby = false) => { setTab('live'); window.setTimeout(() => live.current?.startListening(mode, { standby }), 50); }, []);
 
   // Turn itself on: when the app opens (setting), when an interview on the
   // schedule is happening now, or when its "starting" notification is tapped.
   useEffect(() => {
     const appt = current(loadSchedule());
     if (appt) startLive(appt.mode);
-    else if (loadSettings().autoListen) startLive();
+    else if (loadSettings().autoListen) startLive(undefined, loadSettings().standby);
     let off: (() => void) | undefined;
     void onAppointmentOpened((mode, auto) => { if (auto) startLive(mode); else setTab('prep'); }).then((f) => { off = f; });
     // Coming back to the app during a scheduled interview starts listening too.

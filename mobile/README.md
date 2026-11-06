@@ -21,7 +21,11 @@ The Soro X interview assistant for Android phones (and iPhone/iPad). It runs on
 - **Me** — Profile (CV + job), Schedule (interviews: at the start time a
   notification opens Soro X already listening), Settings.
 - **Turns itself on** — optionally when the app opens, when a scheduled
-  interview starts, or when you return to the app during one.
+  interview starts, or when you return to the app during one. **Standby**
+  listens quietly and turns on by itself at the first question.
+- **Glass view** — the latest question and answer in large text on a
+  translucent panel (adjustable size, earlier answers), good for a tablet on a
+  stand or in split screen next to another app.
 - **AI providers** — Claude, OpenAI, Gemini, Groq, OpenRouter, NVIDIA (your key).
 - **Listening** — the phone's own recognition (free), **offline Whisper on the
   phone** (one-time download, then no internet needed; audio never leaves the

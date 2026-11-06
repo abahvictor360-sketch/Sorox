@@ -23,6 +23,8 @@ export interface Settings {
   modeNotes: Partial<Record<ModeId, string>>;
   /** Start listening as soon as the app opens. */
   autoListen: boolean;
+  /** Listen on standby and turn on by itself at the first question. */
+  standby: boolean;
   /** Keep the screen on while listening. */
   keepAwake: boolean;
 }
@@ -39,6 +41,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'interview',
   modeNotes: {},
   autoListen: false,
+  standby: false,
   keepAwake: true,
 };
 
