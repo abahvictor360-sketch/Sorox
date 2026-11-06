@@ -13,14 +13,16 @@
  *
  *   - Company research, cover letter, negotiation script and Role Insight, all
  *     generated with the user's own AI provider (and Tavily key, when set).
- *
- * Not implemented: live negotiation coaching during a call.
+ *   - Live negotiation coaching: interviewer lines about pay (fed by main.ts)
+ *     drive a tracker; a pay question then gets a coaching card (what to do and
+ *     the exact words to say) instead of a normal answer. See LiveNegotiationCoach.ts.
  */
 import { extractSafeDocumentText } from '../../../electron/services/SafeDocumentTextExtractor';
 import { isCandidateProfileQuestion } from '../../../electron/llm/manualProfileIntelligence';
 import { KnowledgeDatabaseManager } from './KnowledgeDatabaseManager';
 import { extractJob, extractResume } from './ProfileExtractor';
-import { textHasCompEvidence } from './NegotiationConversationTracker';
+import { NegotiationConversationTracker, NegotiationState, detectPhase, textHasCompEvidence } from './NegotiationConversationTracker';
+import { coachLive } from './LiveNegotiationCoach';
 import { CompanyResearchEngine } from './CompanyResearchEngine';
 import { CoverLetter, generateCoverLetter, generateNegotiationScript, NegotiationScript } from './ProfileGenerators';
 import { RoleInsightService } from './roleInsight/RoleInsightService';
@@ -41,6 +43,9 @@ const UNREADABLE = 'Could not read any text from that file. If it is a scanned P
 
 export class KnowledgeOrchestrator {
     private generateContentFn: GenerateContentFn | null = null;
+    /** Faster chain for live coaching (main.ts); falls back to generateContentFn. */
+    private liveCoachingContentFn: GenerateContentFn | null = null;
+    private readonly negotiation = new NegotiationConversationTracker();
     private knowledgeModeEnabled = false;
     private resume: StoredDocument<ResumeFacts> | null = null;
     private jd: StoredDocument<JobFacts> | null = null;
@@ -59,6 +64,10 @@ export class KnowledgeOrchestrator {
 
     setGenerateContentFn(fn: GenerateContentFn): void {
         this.generateContentFn = fn;
+    }
+
+    setLiveCoachingContentFn(fn: GenerateContentFn): void {
+        this.liveCoachingContentFn = fn;
     }
 
     /** Tavily (user key) → none; resolved per use so a key added mid-session counts. */
@@ -202,6 +211,8 @@ export class KnowledgeOrchestrator {
         if (!this.isKnowledgeMode() || !this.resume) return null;
         const q = typeof question === 'string' ? question : '';
         const contextBlock = buildContextBlock(this.resume.structured_data, this.jd?.structured_data ?? null);
+        const coaching = await this.liveCoaching(q);
+        if (coaching) return { contextBlock, factualRecall: false, isIntroQuestion: false, liveNegotiationResponse: coaching };
         return {
             contextBlock,
             // "About me" questions are plain recall of the user's own facts; pay talk is not.
@@ -212,7 +223,33 @@ export class KnowledgeOrchestrator {
 
     /** Hooks the core app calls on every turn; the Soro X engine keeps no per-turn state. */
     feedForDepthScoring(_message: string): void { /* no-op */ }
-    feedInterviewerUtterance(_text: string): void { /* no-op */ }
+
+    /** Final interviewer lines (main.ts, already gated to modes where pay talk belongs). */
+    feedInterviewerUtterance(text: string): void {
+        this.negotiation.feed(text);
+    }
+
+    /**
+     * A coaching card for a pay question, or null to answer normally. Pay talk
+     * starts coaching; once a negotiation is running, its follow-ups ("is that
+     * flexible?", "we can't go higher") are coached too. Any failure falls back
+     * to the normal grounded answer.
+     */
+    private async liveCoaching(question: string): Promise<unknown | null> {
+        if (!question.trim() || !this.resume) return null;
+        const isPay = textHasCompEvidence(question);
+        if (!isPay && !(this.negotiation.isActive() && detectPhase(question))) return null;
+        const generate = this.liveCoachingContentFn ?? this.generateContentFn;
+        if (!generate) return null;
+        this.negotiation.feed(question); // no-op when main.ts already fed this line
+        const state: NegotiationState = this.negotiation.getState() ?? NegotiationConversationTracker.empty();
+        try {
+            return await coachLive(generate, question, state, this.resume.structured_data, this.jd?.structured_data ?? null, this.getNegotiationScript());
+        } catch (err: any) {
+            console.warn('[Soro X] live negotiation coaching failed; answering normally:', err?.message ?? err);
+            return null;
+        }
+    }
 
     // ─── Company research, cover letter, negotiation script, Role Insight ───
 
@@ -264,12 +301,15 @@ export class KnowledgeOrchestrator {
         return this.writeDocument('negotiation_script', generateNegotiationScript);
     }
 
-    // Live negotiation coaching during a call is not part of Soro X.
-    getNegotiationTracker() {
-        return { getState: (): null => null, isActive: (): boolean => false };
+    /** Read by profile:get-negotiation-state. */
+    getNegotiationTracker(): NegotiationConversationTracker {
+        return this.negotiation;
     }
 
-    resetNegotiationSession(): void { /* no-op */ }
+    /** profile:reset-negotiation, and a new meeting. */
+    resetNegotiationSession(): void {
+        this.negotiation.reset();
+    }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

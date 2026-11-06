@@ -21,7 +21,8 @@ const dist = (p) => path.join(root, 'dist-electron', p);
 
 const { KnowledgeOrchestrator } = require(dist('premium/electron/knowledge/KnowledgeOrchestrator.js'));
 const { KnowledgeDatabaseManager } = require(dist('premium/electron/knowledge/KnowledgeDatabaseManager.js'));
-const { textHasCompEvidence } = require(dist('premium/electron/knowledge/NegotiationConversationTracker.js'));
+const { textHasCompEvidence, parseMoney, NegotiationConversationTracker, NEGOTIATION_IDLE_MS } = require(dist('premium/electron/knowledge/NegotiationConversationTracker.js'));
+const { normalizeCoaching, targetFrom } = require(dist('premium/electron/knowledge/LiveNegotiationCoach.js'));
 const { buildActiveProfileContext } = require(dist('electron/llm/ActiveProfileContext.js'));
 const { profileFactsReady } = require(dist('electron/llm/manualProfileIntelligence.js'));
 
@@ -200,15 +201,106 @@ test('a new upload replaces the previous document of that type', async () => {
     assert.equal(rows.n, 1);
 });
 
-test('live negotiation coaching is not part of Soro X and stays inert', async () => {
+const COACH_JSON = {
+    phase: 'offer', tacticalNote: 'Thank them, then counter at the top of your range.',
+    exactScript: 'Thank you, I am excited about this. Based on the scope, I was expecting closer to 165,000.',
+    showSilenceTimer: true, yourTarget: 999, currency: 'USD',
+};
+
+test('live negotiation coaching: pay talk gets a coaching card grounded in the call', async () => {
+    const prompts = [];
     const { o } = engine();
+    await o.ingestDocument(tmpFile('cv.txt', RESUME_TEXT), 'resume');
+    await o.ingestDocument(tmpFile('jd.txt', JD_TEXT), 'jd');
+    o.setKnowledgeMode(true);
+    o.setLiveCoachingContentFn(async (contents) => { prompts.push(contents.map((c) => c.text).join('\n')); return JSON.stringify(COACH_JSON); });
+
     assert.equal(o.getNegotiationTracker().isActive(), false);
     assert.equal(o.getNegotiationTracker().getState(), null);
+
+    // Normal questions are not coached.
+    assert.equal((await o.processQuestion('Tell me about your experience')).liveNegotiationResponse, undefined);
+    assert.equal(prompts.length, 0);
+
+    // main.ts feeds interviewer lines; the offer is then coached.
+    o.feedInterviewerUtterance('So we would like to offer you a base salary of $140,000.');
+    assert.equal(o.getNegotiationTracker().isActive(), true);
+    const r = await o.processQuestion('So we would like to offer you a base salary of $140,000.');
+    const card = r.liveNegotiationResponse;
+    assert.equal(card.phase, 'offer');
+    assert.equal(card.theirOffer, 140000);
+    assert.equal(card.currency, 'USD');
+    assert.equal(card.showSilenceTimer, true);
+    assert.ok(card.exactScript.includes('165,000'));
+    assert.equal(card.yourTarget, 999, 'no prepared plan: the model target is used');
+    assert.equal(r.factualRecall, false);
+    assert.ok(r.contextBlock.includes('<candidate_profile'));
+    assert.equal(o.getNegotiationTracker().getState().recent.length, 1, 'the same line is not counted twice');
+    assert.ok(prompts[0].includes('Senior Engineer at Analytical Engines Ltd'), 'grounded in the CV');
+    assert.ok(prompts[0].includes('Staff Backend Engineer at Babbage Corp'), 'grounded in the job');
+    assert.ok(prompts[0].includes('140,000 USD'));
+
+    // A follow-up without pay words is still coached while the negotiation runs.
+    const push = await o.processQuestion("Honestly that is the best we can do right now.");
+    assert.ok(push.liveNegotiationResponse);
+    assert.equal(o.getNegotiationTracker().getState().phase, 'pushback');
+
     o.resetNegotiationSession();
-    o.setKnowledgeMode(true);
+    assert.equal(o.getNegotiationTracker().isActive(), false);
+    assert.equal((await o.processQuestion("Honestly that is the best we can do right now.")).liveNegotiationResponse, undefined);
+});
+
+test('live negotiation coaching falls back to a normal answer when the AI fails or is off', async () => {
+    const { o } = engine();
     await o.ingestDocument(tmpFile('cv.txt', RESUME_TEXT), 'resume');
+    o.setLiveCoachingContentFn(async () => { throw new Error('rate limited'); });
+    assert.equal(await o.processQuestion('What salary are you expecting?'), null, 'profile mode off: nothing');
+    o.setKnowledgeMode(true);
     const r = await o.processQuestion('What salary are you expecting?');
     assert.equal(r.liveNegotiationResponse, undefined);
+    assert.ok(r.contextBlock);
+    o.setLiveCoachingContentFn(async () => 'not json');
+    assert.equal((await o.processQuestion('What salary are you expecting?')).liveNegotiationResponse, undefined);
+});
+
+test('negotiation tracker: phases, amounts and expiry', () => {
+    let now = 1_000;
+    const t = new NegotiationConversationTracker(() => now);
+    assert.equal(t.feed('Tell me about your last project'), false);
+    assert.equal(t.feed('What are your salary expectations?'), true);
+    assert.equal(t.getState().phase, 'probing');
+    assert.equal(t.getState().theirOffer, null, 'their question is not an offer');
+    t.feed('The range for this role is 120 to 140k dollars.');
+    assert.equal(t.getState().phase, 'anchoring');
+    assert.equal(t.getState().theirOffer, 140000);
+    assert.equal(t.getState().currency, 'USD');
+    t.feed("We can offer 130k base.");
+    assert.equal(t.getState().phase, 'offer');
+    assert.deepEqual(t.getState().offers, [140000, 130000]);
+    t.feed("That's the top of our band, I'm afraid.");
+    assert.equal(t.getState().phase, 'pushback');
+    now += NEGOTIATION_IDLE_MS + 1;
+    assert.equal(t.isActive(), false, 'expires when the interview moves on');
+    assert.equal(t.getState(), null);
+});
+
+test('money parsing', () => {
+    assert.deepEqual(parseMoney('Is $150k in range?'), [{ amount: 150000, currency: 'USD' }]);
+    assert.deepEqual(parseMoney('£80,000 - £95,000'), [{ amount: 80000, currency: 'GBP' }, { amount: 95000, currency: 'GBP' }]);
+    assert.deepEqual(parseMoney('around 18 LPA'), [{ amount: 1800000, currency: 'INR' }]);
+    assert.deepEqual(parseMoney('I have 5 years and 3 reports, since 2019'), []);
+    assert.deepEqual(parseMoney('120-140k EUR').map((m) => m.amount), [120000, 140000]);
+});
+
+test('coaching payload: prepared plan target wins, junk is rejected', () => {
+    const state = { phase: 'offer', theirOffer: 100000, offers: [100000], currency: 'USD', recent: [], startedAt: 1, lastActivityAt: 1 };
+    const target = targetFrom({ target_range: '$120,000 – $135,000', opening_script: '', counter_scripts: [], leverage_points: [], walk_away: '', summary: '' }, null, 'USD');
+    assert.deepEqual(target, { amount: 135000, currency: 'USD' });
+    const p = normalizeCoaching({ ...COACH_JSON, phase: 'nonsense' }, state, target);
+    assert.equal(p.yourTarget, 135000);
+    assert.equal(p.phase, 'offer', 'unknown phase falls back to the tracker');
+    assert.equal(normalizeCoaching({ foo: 1 }, state, target), null);
+    assert.equal(normalizeCoaching(null, state, target), null);
 });
 
 test('compensation detector', () => {
