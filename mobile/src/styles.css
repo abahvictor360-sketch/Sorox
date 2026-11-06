@@ -248,3 +248,6 @@ button { display: inline-flex; align-items: center; justify-content: center; gap
 .status-card.s-on svg { color: var(--ok); }
 .status-card.s-off svg, .status-card.s-error svg { color: var(--danger); }
 .status-card.s-late svg, .status-card.s-browser svg { color: var(--warn); }
+.update-banner { margin: 4px 12px 0; padding: 8px 10px 8px 14px; display: flex; align-items: center; gap: 10px; border-radius: 14px; border-color: var(--bubble-line); font-size: 14px; }
+.update-banner svg { color: var(--accent-2); flex: none; }
+.update-get { text-decoration: none; border-radius: var(--r-sm); padding: 6px 12px; min-height: 36px; display: inline-flex; align-items: center; }

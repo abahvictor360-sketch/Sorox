@@ -8,6 +8,8 @@ import { PrepScreen } from './screens/PrepScreen';
 import { MeScreen, type MeTab } from './screens/MeScreen';
 import { onAppointmentOpened, takeDueAppointment } from './lib/schedule';
 import { Icon } from './components/Icon';
+import { checkForUpdate, dismissUpdate, type UpdateInfo } from './lib/updates';
+import { Download, X } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 
 type Tab = 'live' | 'notes' | 'practice' | 'prep' | 'me';
@@ -26,6 +28,17 @@ export default function App() {
   const [meTab, setMeTab] = useState<MeTab>(() => (!isReady(loadSettings()) ? 'settings' : !hasProfile(loadProfile()) ? 'profile' : 'settings'));
   const [notesVersion, setNotesVersion] = useState(0);
   const live = useRef<LiveHandle>(null);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+
+  // Tell the user when a newer version is out: on open and when coming back to the app.
+  useEffect(() => {
+    const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : Capacitor.getPlatform() === 'android' ? 'android' : 'web';
+    const run = () => { void checkForUpdate(platform).then((u) => { if (u) setUpdate(u); }); };
+    run();
+    const onVis = () => { if (document.visibilityState === 'visible') run(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, []);
 
   const setSettings = useCallback((s: Settings) => { setSettingsState(s); saveSettings(s); }, []);
   const setProfile = useCallback((p: Profile) => { setProfileState(p); saveProfile(p); }, []);
@@ -71,6 +84,14 @@ export default function App() {
           <span className="brand">Soro X</span>
           <span className="sub">{TABS.find((t) => t.id === tab)?.label}</span>
         </header>
+        {update && (
+          <div className="update-banner glass" role="status">
+            <Download size={18} aria-hidden />
+            <span className="grow"><b>Update available</b> ({update.version}). Install it to get the latest fixes.</span>
+            <a className="primary small update-get" href={update.url} target="_blank" rel="noreferrer">Download</a>
+            <button className="ghost small" aria-label="Later" onClick={() => { dismissUpdate(update.version); setUpdate(null); }}><X size={16} aria-hidden /></button>
+          </div>
+        )}
         {needsKey && tab !== 'me' && (
           <button className="banner" onClick={() => { setTab('me'); setMeTab('settings'); }}>Add your AI key to get answers →</button>
         )}

@@ -6,6 +6,8 @@ import { WHISPER_MODELS, downloadedModels, loadWhisper } from '../lib/whisper';
 import { ConnectComputer } from '../components/ConnectComputer';
 import { ModeIcon } from '../components/ModeIcon';
 import { CircleCheck } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { BUILD_RUN, BUILD_TIME, DOWNLOAD_PAGE, checkForUpdate, type UpdateInfo } from '../lib/updates';
 
 const STT: { id: SttEngine; label: string; note: string }[] = [
   { id: 'device', label: 'Phone (free)', note: 'Your phone\'s own speech recognition. No key needed.' },
@@ -19,6 +21,7 @@ const LANGS = ['en-US', 'en-GB', 'en-IN', 'en-NG', 'en-AU', 'fr-FR', 'de-DE', 'e
 export function SettingsScreen({ settings, onChange }: { settings: Settings; onChange: (s: Settings) => void }) {
   const [test, setTest] = useState('');
   const [show, setShow] = useState(false);
+  const [upd, setUpd] = useState<UpdateInfo | 'none' | 'checking' | null>(null);
   const [dl, setDl] = useState<{ model: string; pct: number | null; error?: string } | null>(null);
   const [have, setHave] = useState<string[]>(downloadedModels);
   const [notesMode, setNotesMode] = useState(settings.mode);
@@ -132,6 +135,17 @@ export function SettingsScreen({ settings, onChange }: { settings: Settings; onC
       <div className="card about">
         <h3>About</h3>
         <p>Soro X Mobile, for personal and non-commercial use.</p>
+        <p className="muted small">Build {BUILD_RUN || 'local'}{BUILD_TIME ? `, ${new Date(BUILD_TIME).toLocaleDateString()}` : ''}</p>
+        <div className="row">
+          <button className="secondary small" disabled={upd === 'checking'} onClick={() => {
+            setUpd('checking');
+            const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : Capacitor.getPlatform() === 'android' ? 'android' : 'web';
+            void checkForUpdate(platform, true).then((u) => setUpd(u ?? 'none'));
+          }}>{upd === 'checking' ? 'Checking…' : 'Check for updates'}</button>
+          {upd === 'none' && <span className="ok small"><CircleCheck size={14} aria-hidden /> {BUILD_RUN ? 'You have the latest version.' : 'Development build: updates come from the download page.'}</span>}
+          {upd && typeof upd === 'object' && <a className="link" href={upd.url} target="_blank" rel="noreferrer">Download {upd.version}</a>}
+        </div>
+        {!BUILD_RUN && <a className="link" href={DOWNLOAD_PAGE} target="_blank" rel="noreferrer">Open the download page</a>}
         <p className="small">This project is based on Natively, originally developed by Natively AI Private Limited. Licensed under the Natively Personal Use Source License v1.0.</p>
       </div>
     </section>

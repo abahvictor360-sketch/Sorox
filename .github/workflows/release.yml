@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag, e.g. v2.9.2-sorox.1 (defaults to v<package.json version>-sorox.<run number>)'
+        description: 'Release tag. Leave empty: it becomes v<desktop build version>, which installed apps compare against for updates.'
         required: false
 
 permissions:
@@ -67,23 +67,39 @@ jobs:
           one '*.ipa'                SoroX-Tablet-iPad-unsigned.ipa  dl/tablet
           one '*.apk'                SoroX-Android.apk               dl/mobile
           one '*.ipa'                SoroX-iPhone-unsigned.ipa       dl/mobile
+          # Update feeds for the desktop app's built-in update check (electron-updater):
+          # latest.yml points at the stable installer name used in this release.
+          WIN_FEED=$(find dl/desktop -type f -name 'latest.yml' 2>/dev/null | head -n1 || true)
+          if [ -n "$WIN_FEED" ]; then
+            sed -E 's#^(\s*-?\s*url: ).*Setup.*\.exe\s*$#\1SoroX-Windows-Setup.exe#; s#^(path: ).*Setup.*\.exe\s*$#\1SoroX-Windows-Setup.exe#' "$WIN_FEED" > out/latest.yml
+            cat out/latest.yml
+          else echo "::warning::No latest.yml: installed Windows copies will not see this release as an update"; fi
+          MAC_FEED=$(find dl/desktop -type f -name 'latest-mac.yml' 2>/dev/null | head -n1 || true)
+          [ -n "$MAC_FEED" ] && cp "$MAC_FEED" out/latest-mac.yml || echo "::warning::No latest-mac.yml"
           ls -la out
           [ -n "$(ls -A out)" ] || { echo "::error::No files to publish."; exit 1; }
 
       - name: Publish release
         run: |
           set -euo pipefail
-          VERSION=$(node -p "require('./package.json').version")
+          # The desktop build's own version (2.9.<100 + build>), so the tag is what
+          # installed copies compare against; a release with no new desktop build
+          # gets a suffix and keeps the same desktop version.
+          VERSION=$(sed -nE 's/^version: *//p' out/latest.yml 2>/dev/null | head -n1)
+          [ -n "$VERSION" ] || VERSION=$(node -p "require('./package.json').version")
           TAG="${{ github.event.inputs.tag }}"
-          [ -n "$TAG" ] || TAG="v${VERSION}-sorox.${GITHUB_RUN_NUMBER}"
+          if [ -z "$TAG" ]; then
+            TAG="v${VERSION}"
+            if gh release view "$TAG" >/dev/null 2>&1; then TAG="v${VERSION}-r${GITHUB_RUN_NUMBER}"; fi
+          fi
           cat > notes.md <<EOF
-          Soro X ${VERSION} — Windows, macOS, Android phone and tablet, iPhone and iPad.
+          Soro X ${VERSION}: Windows, macOS, Android phone and tablet, iPhone and iPad.
 
           Download page and setup steps: see the repository README.
 
           - **Windows:** \`SoroX-Windows-Setup.exe\` (or the portable \`.exe\`). Unsigned: SmartScreen → More info → Run anyway.
           - **Mac:** \`SoroX-macOS-AppleSilicon.dmg\` (M1–M4) or \`SoroX-macOS-Intel.dmg\`. Not notarized: right-click the app → Open.
-          - **Android phone (Soro X Mobile):** \`SoroX-Android.apk\` — the interview assistant on your own AI key: live answers, practice, prep; also opens Soro X on your computer.
+          - **Android phone (Soro X Mobile):** \`SoroX-Android.apk\`, the interview assistant on your own AI key: live answers, practice, prep; also opens Soro X on your computer.
           - **iPhone (Soro X Mobile):** \`SoroX-iPhone-unsigned.ipa\`, to be signed with your Apple ID (AltStore / Sideloadly) or built in Xcode.
           - **Android tablet:** \`SoroX-Tablet-Android.apk\`.
           - **iPad:** \`SoroX-Tablet-iPad-unsigned.ipa\`, to be signed with your Apple ID (AltStore / Sideloadly) or built in Xcode.

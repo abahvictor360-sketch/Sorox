@@ -55,6 +55,8 @@ jobs:
           npm run build:electron
           npm run build:native
           node scripts/ensure-sqlite-vec.js
+      - name: Set this build's version (installed copies see it as an update)
+        run: node scripts/set-sorox-build-version.mjs
       - name: Package (NSIS installer + portable)
         shell: bash
         run: ./node_modules/.bin/electron-builder --win --publish never
@@ -63,6 +65,7 @@ jobs:
           name: soro-x-windows
           path: |
             release/*.exe
+            release/latest.yml
           if-no-files-found: error
       - name: Launch check (packaged app, no keys)
         shell: bash
@@ -102,6 +105,8 @@ jobs:
           node scripts/ensure-sharp-mac-deps.js
           node scripts/ensure-napi-canvas-mac-deps.js
           node scripts/ensure-sqlite-vec.js
+      - name: Set this build's version (installed copies see it as an update)
+        run: node scripts/set-sorox-build-version.mjs
       - name: Package (ad-hoc signed .dmg + .zip)
         run: ./node_modules/.bin/electron-builder --mac --publish never
       - uses: actions/upload-artifact@v4
@@ -109,6 +114,7 @@ jobs:
           name: soro-x-macos
           path: |
             release/*.dmg
+            release/latest-mac.yml
           if-no-files-found: error
       - name: Launch check (packaged arm64 app, no keys)
         run: |
